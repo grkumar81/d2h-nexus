@@ -1,0 +1,20 @@
+services:
+  mysql:
+    image: 'mysql:8.4'
+    environment:
+      MYSQL_DATABASE: d2h_platform
+      MYSQL_USER: d2h_user
+      MYSQL_PASSWORD: d2h_pass
+      MYSQL_ROOT_PASSWORD: d2h_root_pass
+    ports:
+      - '3306:3306'
+    volumes:
+      - d2h_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "d2h_user", "-pd2h_pass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  d2h_mysql_data:
