@@ -48,7 +48,7 @@ public class SecurityConfig {
                 })
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(tenantContextFilter, JwtAuthFilter.class);
+            .addFilterBefore(tenantContextFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
