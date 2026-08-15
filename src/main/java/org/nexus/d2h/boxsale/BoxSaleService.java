@@ -6,6 +6,7 @@ import org.nexus.d2h.asset.StbAsset;
 import org.nexus.d2h.common.BusinessException;
 import org.nexus.d2h.common.PageResponse;
 import org.nexus.d2h.common.ResourceNotFoundException;
+import org.nexus.d2h.finance.FinanceService;
 import org.nexus.d2h.retailer.Retailer;
 import org.nexus.d2h.retailer.RetailerRepository;
 import org.nexus.d2h.tenant.Tenant;
@@ -30,15 +31,18 @@ public class BoxSaleService {
     private final AssetService assetService;
     private final TenantRepository tenantRepository;
     private final RetailerRepository retailerRepository;
+    private final FinanceService financeService;
 
     public BoxSaleService(SaleRepository saleRepository,
                           AssetService assetService,
                           TenantRepository tenantRepository,
-                          RetailerRepository retailerRepository) {
+                          RetailerRepository retailerRepository,
+                          FinanceService financeService) {
         this.saleRepository = saleRepository;
         this.assetService = assetService;
         this.tenantRepository = tenantRepository;
         this.retailerRepository = retailerRepository;
+        this.financeService = financeService;
     }
 
     @Transactional
@@ -76,6 +80,8 @@ public class BoxSaleService {
         sale.setTotalAmount(total);
 
         StbSale saved = saleRepository.save(sale);
+        // Record BOX_SALE finance transaction in the same atomic operation
+        financeService.recordBoxSale(tenant, retailer, saved);
         log.info("Box sale created: id={} retailer={} items={} total={} tenant={}",
                 saved.getId(), retailer.getRetailerCode(),
                 request.items().size(), total, tenant.getTenantCode());

@@ -11,6 +11,7 @@ import org.nexus.d2h.asset.AssetStatus;
 import org.nexus.d2h.asset.StbAsset;
 import org.nexus.d2h.common.BusinessException;
 import org.nexus.d2h.common.ResourceNotFoundException;
+import org.nexus.d2h.finance.FinanceService;
 import org.nexus.d2h.retailer.Retailer;
 import org.nexus.d2h.retailer.RetailerRepository;
 import org.nexus.d2h.tenant.Tenant;
@@ -37,6 +38,7 @@ class BoxSaleServiceTest {
     @Mock AssetService assetService;
     @Mock TenantRepository tenantRepository;
     @Mock RetailerRepository retailerRepository;
+    @Mock FinanceService financeService;
     @InjectMocks BoxSaleService boxSaleService;
 
     private Tenant tenant;

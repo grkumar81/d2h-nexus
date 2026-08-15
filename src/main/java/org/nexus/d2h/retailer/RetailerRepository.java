@@ -12,4 +12,6 @@ public interface RetailerRepository extends JpaRepository<Retailer, Long>, JpaSp
     boolean existsByTenantIdAndRetailerCodeAndIdNot(Long tenantId, String retailerCode, Long id);
 
     Optional<Retailer> findByIdAndTenantId(Long id, Long tenantId);
+
+    Optional<Retailer> findByTenantIdAndRetailerCode(Long tenantId, String retailerCode);
 }
