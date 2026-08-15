@@ -12,7 +12,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
 
     @Query("""
             SELECT a FROM AuditLog a
-            WHERE a.tenant.id = :tenantId
+            WHERE a.tenantId = :tenantId
               AND (:entityType IS NULL OR a.entityType = :entityType)
               AND (:entityId   IS NULL OR a.entityId   = :entityId)
               AND (:action     IS NULL OR a.action     = :action)

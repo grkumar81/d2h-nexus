@@ -49,7 +49,7 @@ class RechargeServiceTest {
         setId(tenant, 1L);
 
         retailer = new Retailer();
-        retailer.setTenant(tenant);
+        retailer.setTenantId(1L);
         retailer.setRetailerCode("RET001");
         retailer.setRetailerName("Test Retailer");
         retailer.setMobile("9876543210");
@@ -281,7 +281,7 @@ class RechargeServiceTest {
         when(rechargeRepository.existsByTenantIdAndReference(1L, "REF001")).thenReturn(true);
 
         assertThatThrownBy(() -> rechargeService.createFromUpload(
-                tenant, retailer, null, RechargeType.REGULAR, LocalDate.now(),
+                1L, retailer, null, RechargeType.REGULAR, LocalDate.now(),
                 BigDecimal.valueOf(1000), null, "REF001", null, null, null, null, null))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", "DUPLICATE_REFERENCE");
@@ -291,7 +291,7 @@ class RechargeServiceTest {
 
     private RechargeTransaction rechargeWithId(Long id, RechargeStatus status) {
         RechargeTransaction tx = new RechargeTransaction();
-        tx.setTenant(tenant);
+        tx.setTenantId(1L);
         tx.setRetailer(retailer);
         tx.setReference("RCH-" + id);
         tx.setRechargeDate(LocalDate.now());

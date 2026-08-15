@@ -6,7 +6,6 @@ import lombok.Setter;
 import org.nexus.d2h.boxsale.StbSale;
 import org.nexus.d2h.common.BaseEntity;
 import org.nexus.d2h.retailer.Retailer;
-import org.nexus.d2h.tenant.Tenant;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,9 +16,8 @@ import java.time.LocalDate;
 @Table(name = "financial_transactions")
 public class FinancialTransaction extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "tenant_id", nullable = false, updatable = false)
-    private Tenant tenant;
+    @Column(name = "tenant_id", nullable = false, updatable = false)
+    private Long tenantId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "retailer_id", nullable = false)
@@ -63,12 +61,10 @@ public class FinancialTransaction extends BaseEntity {
     @JoinColumn(name = "sale_id")
     private StbSale sale;
 
-    /** The reversal transaction that reversed this one (set on original when reversed). */
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reversed_by_id")
     private FinancialTransaction reversedBy;
 
-    /** The original transaction this reversal refers to (set on the reversal record). */
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reversal_of_id")
     private FinancialTransaction reversalOf;

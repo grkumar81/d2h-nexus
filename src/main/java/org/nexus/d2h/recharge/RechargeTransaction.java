@@ -6,7 +6,6 @@ import lombok.Setter;
 import org.nexus.d2h.asset.StbAsset;
 import org.nexus.d2h.common.BaseEntity;
 import org.nexus.d2h.retailer.Retailer;
-import org.nexus.d2h.tenant.Tenant;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,9 +16,8 @@ import java.time.LocalDate;
 @Table(name = "recharge_transactions")
 public class RechargeTransaction extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "tenant_id", nullable = false, updatable = false)
-    private Tenant tenant;
+    @Column(name = "tenant_id", nullable = false, updatable = false)
+    private Long tenantId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "retailer_id", nullable = false)

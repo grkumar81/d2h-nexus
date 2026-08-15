@@ -15,7 +15,7 @@ public final class RetailerSpecification {
             List<Predicate> predicates = new ArrayList<>();
 
             // Tenant isolation — always applied
-            predicates.add(cb.equal(root.get("tenant").get("id"), tenantId));
+            predicates.add(cb.equal(root.get("tenantId"), tenantId));
 
             if (status != null) {
                 predicates.add(cb.equal(root.get("status"), status));

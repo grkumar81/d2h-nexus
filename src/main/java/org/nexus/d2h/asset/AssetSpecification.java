@@ -13,7 +13,7 @@ public final class AssetSpecification {
     public static Specification<StbAsset> search(Long tenantId, String query, AssetStatus status, Long retailerId) {
         return (root, cq, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.equal(root.get("tenant").get("id"), tenantId));
+            predicates.add(cb.equal(root.get("tenantId"), tenantId));
 
             if (status != null) {
                 predicates.add(cb.equal(root.get("status"), status));

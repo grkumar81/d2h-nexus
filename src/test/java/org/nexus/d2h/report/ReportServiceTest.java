@@ -45,7 +45,7 @@ class ReportServiceTest {
         setId(tenant, 1L);
 
         retailer = new Retailer();
-        retailer.setTenant(tenant);
+        retailer.setTenantId(1L);
         retailer.setRetailerCode("RET001");
         retailer.setRetailerName("Test Retailer");
         retailer.setMobile("9876543210");

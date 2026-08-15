@@ -27,17 +27,12 @@ public class AuditService {
         this.tenantRepository = tenantRepository;
     }
 
-    /**
-     * Records an audit entry. Uses REQUIRES_NEW so audit is persisted even if
-     * the caller's transaction rolls back (e.g. failed attempts are still audited).
-     * Swallows exceptions so audit failure never breaks the calling operation.
-     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void record(Tenant tenant, String entityType, String entityId,
+    public void record(Long tenantId, String entityType, String entityId,
                        String action, String details, String ipAddress) {
         try {
             String performedBy = currentUsername();
-            AuditLog entry = new AuditLog(tenant, entityType, entityId, action, performedBy, details, ipAddress);
+            AuditLog entry = new AuditLog(tenantId, entityType, entityId, action, performedBy, details, ipAddress);
             auditLogRepository.save(entry);
         } catch (Exception e) {
             log.warn("Failed to write audit log: entity={}/{} action={} error={}",
@@ -49,20 +44,21 @@ public class AuditService {
     public PageResponse<AuditLogDto> search(String entityType, String entityId,
                                              String action, String performedBy,
                                              Instant from, Instant to, Pageable pageable) {
-        Long tenantId = resolveTenant().getId();
+        Long tenantId = resolveTenantId();
         return PageResponse.from(
                 auditLogRepository.search(tenantId, entityType, entityId, action, performedBy, from, to, pageable)
                         .map(AuditLogDto::from)
         );
     }
 
-    private Tenant resolveTenant() {
+    private Long resolveTenantId() {
         String tenantCode = TenantContext.getCurrentTenant();
         if (tenantCode == null || tenantCode.isBlank()) {
             throw new BusinessException("TENANT_CONTEXT_MISSING", "Tenant context is not set");
         }
-        return tenantRepository.findByTenantCode(tenantCode)
+        Tenant tenant = tenantRepository.findByTenantCode(tenantCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantCode));
+        return tenant.getId();
     }
 
     private String currentUsername() {

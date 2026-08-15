@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.nexus.d2h.retailer.Retailer;
-import org.nexus.d2h.tenant.Tenant;
 
 import java.time.Instant;
 
@@ -22,9 +21,8 @@ public class StbAssetHistory {
     @JoinColumn(name = "asset_id", nullable = false, updatable = false)
     private StbAsset asset;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "tenant_id", nullable = false, updatable = false)
-    private Tenant tenant;
+    @Column(name = "tenant_id", nullable = false, updatable = false)
+    private Long tenantId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "from_status", length = 20)
@@ -50,7 +48,7 @@ public class StbAssetHistory {
     public StbAssetHistory(StbAsset asset, AssetStatus fromStatus, AssetStatus toStatus,
                            Retailer retailer, String changedBy, String remarks) {
         this.asset = asset;
-        this.tenant = asset.getTenant();
+        this.tenantId = asset.getTenantId();
         this.fromStatus = fromStatus;
         this.toStatus = toStatus;
         this.retailer = retailer;

@@ -51,7 +51,7 @@ class BoxSaleServiceTest {
         setId(tenant, 1L);
 
         retailer = new Retailer();
-        retailer.setTenant(tenant);
+        retailer.setTenantId(1L);
         retailer.setRetailerCode("RET001");
         retailer.setRetailerName("Test Retailer");
         retailer.setMobile("9876543210");
@@ -192,7 +192,7 @@ class BoxSaleServiceTest {
 
     private StbAsset assetWithId(Long id) {
         StbAsset a = new StbAsset();
-        a.setTenant(tenant);
+        a.setTenantId(1L);
         a.setSerialNumber("SN00" + id);
         a.setStatus(AssetStatus.AVAILABLE);
         setId(a, id);
@@ -201,7 +201,7 @@ class BoxSaleServiceTest {
 
     private StbSale saleWithId(Long id) {
         StbSale s = new StbSale();
-        s.setTenant(tenant);
+        s.setTenantId(1L);
         s.setRetailer(retailer);
         s.setTransactionDate(LocalDate.now());
         s.setTotalAmount(BigDecimal.valueOf(1500));

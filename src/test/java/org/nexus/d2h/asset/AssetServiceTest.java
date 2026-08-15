@@ -181,7 +181,7 @@ class AssetServiceTest {
 
     private StbAsset assetWithId(Long id, AssetStatus status) {
         StbAsset a = new StbAsset();
-        a.setTenant(tenant);
+        a.setTenantId(1L);
         a.setSerialNumber("SN00" + id);
         a.setStatus(status);
         setId(a, id);
@@ -190,7 +190,7 @@ class AssetServiceTest {
 
     private Retailer retailerWithId(Long id) {
         Retailer r = new Retailer();
-        r.setTenant(tenant);
+        r.setTenantId(1L);
         r.setRetailerCode("RET00" + id);
         r.setRetailerName("Retailer " + id);
         r.setMobile("9876543210");

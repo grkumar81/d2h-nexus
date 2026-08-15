@@ -54,7 +54,7 @@ public class AssetService {
                     "Serial number '" + request.serialNumber() + "' already exists");
         }
         StbAsset asset = new StbAsset();
-        asset.setTenant(tenant);
+        asset.setTenantId(tenant.getId());
         asset.setSerialNumber(request.serialNumber().trim().toUpperCase());
         asset.setBoxNumber(request.boxNumber());
         asset.setModel(request.model());

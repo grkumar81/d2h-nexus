@@ -46,7 +46,7 @@ class AuditServiceTest {
     void record_savesAuditLog() {
         when(auditLogRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        auditService.record(tenant, "Retailer", "42", "CREATE", "code=RET001", null);
+        auditService.record(1L, "Retailer", "42", "CREATE", "code=RET001", null);
 
         verify(auditLogRepository).save(argThat(log ->
                 log.getEntityType().equals("Retailer") &&
@@ -59,13 +59,13 @@ class AuditServiceTest {
         when(auditLogRepository.save(any())).thenThrow(new RuntimeException("DB error"));
 
         assertThatNoException().isThrownBy(() ->
-                auditService.record(tenant, "Retailer", "1", "CREATE", null, null));
+                auditService.record(1L, "Retailer", "1", "CREATE", null, null));
     }
 
     @Test
     void search_returnsTenantScopedResults() {
         when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        AuditLog log = new AuditLog(tenant, "FinancialTransaction", "10", "CREATE", "user1", null, null);
+        AuditLog log = new AuditLog(1L, "FinancialTransaction", "10", "CREATE", "user1", null, null);
         when(auditLogRepository.search(eq(1L), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(log)));
 

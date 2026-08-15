@@ -2,7 +2,6 @@ package org.nexus.d2h.audit;
 
 import jakarta.persistence.*;
 import lombok.Getter;
-import org.nexus.d2h.tenant.Tenant;
 
 import java.time.Instant;
 
@@ -15,9 +14,8 @@ public class AuditLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "tenant_id", nullable = false)
-    private Tenant tenant;
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
 
     @Column(name = "entity_type", nullable = false, length = 100)
     private String entityType;
@@ -42,9 +40,9 @@ public class AuditLog {
 
     protected AuditLog() {}
 
-    public AuditLog(Tenant tenant, String entityType, String entityId,
+    public AuditLog(Long tenantId, String entityType, String entityId,
                     String action, String performedBy, String details, String ipAddress) {
-        this.tenant = tenant;
+        this.tenantId = tenantId;
         this.entityType = entityType;
         this.entityId = entityId;
         this.action = action;

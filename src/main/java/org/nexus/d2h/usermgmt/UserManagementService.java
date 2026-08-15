@@ -69,7 +69,7 @@ public class UserManagementService {
         User saved = userRepository.save(user);
         log.info("User created: username={} tenant={} by={}", saved.getUsername(),
                 tenant.getTenantCode(), currentUsername());
-        auditService.record(tenant, "User", String.valueOf(saved.getId()),
+        auditService.record(tenant.getId(), "User", String.valueOf(saved.getId()),
                 "CREATE", "username=" + saved.getUsername(), null);
         return UserDto.from(saved);
     }
@@ -106,7 +106,7 @@ public class UserManagementService {
 
         Tenant tenant = resolveTenant();
         log.info("Password changed for user={} tenant={}", username, tenant.getTenantCode());
-        auditService.record(tenant, "User", String.valueOf(user.getId()),
+        auditService.record(tenant.getId(), "User", String.valueOf(user.getId()),
                 "PASSWORD_CHANGE", "username=" + username, null);
     }
 
@@ -118,7 +118,7 @@ public class UserManagementService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
         user.setStatus(newStatus);
         User saved = userRepository.save(user);
-        auditService.record(tenant, "User", String.valueOf(userId),
+        auditService.record(tenant.getId(), "User", String.valueOf(userId),
                 action, "username=" + saved.getUsername(), null);
         return UserDto.from(saved);
     }

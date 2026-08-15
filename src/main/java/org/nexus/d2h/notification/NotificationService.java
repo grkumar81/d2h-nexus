@@ -47,7 +47,7 @@ public class NotificationService {
                 .findByTenantIdAndEventTypeAndChannel(tenant.getId(), request.eventType(), request.channel())
                 .orElseGet(() -> {
                     NotificationConfig c = new NotificationConfig();
-                    c.setTenant(tenant);
+                    c.setTenantId(tenant.getId());
                     c.setEventType(request.eventType());
                     c.setChannel(request.channel());
                     c.setCreatedBy(currentUsername());

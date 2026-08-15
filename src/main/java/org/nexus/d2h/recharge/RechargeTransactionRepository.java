@@ -16,12 +16,10 @@ public interface RechargeTransactionRepository
 
     boolean existsByTenantIdAndReference(Long tenantId, String reference);
 
-    // ── Retailer-level aggregates ─────────────────────────────────────────────
-
     @Query("""
             SELECT COALESCE(SUM(r.amount), 0)
             FROM RechargeTransaction r
-            WHERE r.tenant.id = :tenantId
+            WHERE r.tenantId = :tenantId
               AND r.retailer.id = :retailerId
               AND r.rechargeStatus = org.nexus.d2h.recharge.RechargeStatus.SUCCESS
             """)
@@ -30,7 +28,7 @@ public interface RechargeTransactionRepository
     @Query("""
             SELECT COALESCE(SUM(r.amount), 0)
             FROM RechargeTransaction r
-            WHERE r.tenant.id = :tenantId
+            WHERE r.tenantId = :tenantId
               AND r.retailer.id = :retailerId
             """)
     BigDecimal sumTotalByRetailer(@Param("tenantId") Long tenantId, @Param("retailerId") Long retailerId);
@@ -38,7 +36,7 @@ public interface RechargeTransactionRepository
     @Query("""
             SELECT COUNT(r)
             FROM RechargeTransaction r
-            WHERE r.tenant.id = :tenantId
+            WHERE r.tenantId = :tenantId
               AND r.retailer.id = :retailerId
             """)
     long countByRetailer(@Param("tenantId") Long tenantId, @Param("retailerId") Long retailerId);
@@ -46,7 +44,7 @@ public interface RechargeTransactionRepository
     @Query("""
             SELECT MAX(r.rechargeDate)
             FROM RechargeTransaction r
-            WHERE r.tenant.id = :tenantId
+            WHERE r.tenantId = :tenantId
               AND r.retailer.id = :retailerId
             """)
     LocalDate lastRechargeDateByRetailer(@Param("tenantId") Long tenantId, @Param("retailerId") Long retailerId);
@@ -54,19 +52,17 @@ public interface RechargeTransactionRepository
     @Query("""
             SELECT r.amount
             FROM RechargeTransaction r
-            WHERE r.tenant.id = :tenantId
+            WHERE r.tenantId = :tenantId
               AND r.retailer.id = :retailerId
             ORDER BY r.rechargeDate DESC, r.id DESC
             LIMIT 1
             """)
     BigDecimal lastRechargeAmountByRetailer(@Param("tenantId") Long tenantId, @Param("retailerId") Long retailerId);
 
-    // ── Tenant-level aggregates for summary ───────────────────────────────────
-
     @Query("""
             SELECT COALESCE(SUM(r.amount), 0)
             FROM RechargeTransaction r
-            WHERE r.tenant.id = :tenantId
+            WHERE r.tenantId = :tenantId
               AND r.rechargeStatus = org.nexus.d2h.recharge.RechargeStatus.SUCCESS
               AND (:dateFrom IS NULL OR r.rechargeDate >= :dateFrom)
               AND (:dateTo   IS NULL OR r.rechargeDate <= :dateTo)
@@ -78,7 +74,7 @@ public interface RechargeTransactionRepository
     @Query("""
             SELECT COALESCE(SUM(r.amount), 0)
             FROM RechargeTransaction r
-            WHERE r.tenant.id = :tenantId
+            WHERE r.tenantId = :tenantId
               AND r.rechargeStatus = org.nexus.d2h.recharge.RechargeStatus.FAILED
               AND (:dateFrom IS NULL OR r.rechargeDate >= :dateFrom)
               AND (:dateTo   IS NULL OR r.rechargeDate <= :dateTo)
@@ -90,7 +86,7 @@ public interface RechargeTransactionRepository
     @Query("""
             SELECT COALESCE(SUM(r.amount), 0)
             FROM RechargeTransaction r
-            WHERE r.tenant.id = :tenantId
+            WHERE r.tenantId = :tenantId
               AND r.rechargeStatus = org.nexus.d2h.recharge.RechargeStatus.REVERSED
               AND (:dateFrom IS NULL OR r.rechargeDate >= :dateFrom)
               AND (:dateTo   IS NULL OR r.rechargeDate <= :dateTo)
@@ -102,7 +98,7 @@ public interface RechargeTransactionRepository
     @Query("""
             SELECT COALESCE(SUM(r.amount), 0)
             FROM RechargeTransaction r
-            WHERE r.tenant.id = :tenantId
+            WHERE r.tenantId = :tenantId
               AND (:dateFrom IS NULL OR r.rechargeDate >= :dateFrom)
               AND (:dateTo   IS NULL OR r.rechargeDate <= :dateTo)
             """)
@@ -113,7 +109,7 @@ public interface RechargeTransactionRepository
     @Query("""
             SELECT COUNT(r)
             FROM RechargeTransaction r
-            WHERE r.tenant.id = :tenantId
+            WHERE r.tenantId = :tenantId
               AND (:dateFrom IS NULL OR r.rechargeDate >= :dateFrom)
               AND (:dateTo   IS NULL OR r.rechargeDate <= :dateTo)
             """)

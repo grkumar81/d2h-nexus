@@ -51,7 +51,7 @@ class RechargeUploadServiceTest {
         setId(tenant, 1L);
 
         retailer = new Retailer();
-        retailer.setTenant(tenant);
+        retailer.setTenantId(1L);
         retailer.setRetailerCode("RET001");
         retailer.setRetailerName("Test Retailer");
         retailer.setMobile("9876543210");
@@ -64,7 +64,7 @@ class RechargeUploadServiceTest {
 
         when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
         when(retailerRepository.findByTenantIdAndRetailerCode(1L, "RET001")).thenReturn(Optional.of(retailer));
-        when(rechargeService.createFromUpload(any(), any(), any(), any(), any(), any(),
+        when(rechargeService.createFromUpload(any(Long.class), any(), any(), any(), any(), any(),
                 any(), any(), any(), any(), any(), any(), any()))
                 .thenAnswer(inv -> {
                     RechargeTransaction tx = new RechargeTransaction();
@@ -109,7 +109,7 @@ class RechargeUploadServiceTest {
 
     @Test
     void upload_duplicateReferenceInDb_countedAsDuplicate() {
-        when(rechargeService.createFromUpload(any(), any(), any(), any(), any(), any(),
+        when(rechargeService.createFromUpload(any(Long.class), any(), any(), any(), any(), any(),
                 any(), eq("RCH001"), any(), any(), any(), any(), any()))
                 .thenThrow(new BusinessException("DUPLICATE_REFERENCE", "Duplicate reference: RCH001"));
 

@@ -17,6 +17,9 @@ public class Tenant extends BaseEntity {
     @Column(nullable = false, length = 255)
     private String name;
 
+    @Column(name = "schema_name", nullable = false, unique = true, length = 64)
+    private String schemaName;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private TenantStatus status = TenantStatus.PENDING;

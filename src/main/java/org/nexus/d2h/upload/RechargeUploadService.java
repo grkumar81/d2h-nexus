@@ -87,7 +87,7 @@ public class RechargeUploadService {
                 try {
                     RowData rd = parseRow(row, idx, rowNum, tenant, seenRefs);
                     seenRefs.add(rd.reference());
-                    rechargeService.createFromUpload(tenant, rd.retailer(), rd.asset(),
+                    rechargeService.createFromUpload(tenant.getId(), rd.retailer(), rd.asset(),
                             rd.type(), rd.date(), rd.amount(), rd.paymentMethod(),
                             rd.reference(), rd.externalReference(), rd.paymentReference(),
                             rd.servicePeriod(), rd.description(), rd.remarks());
@@ -132,7 +132,7 @@ public class RechargeUploadService {
                 try {
                     RowData rd = parseExcelRow(row, idx, i + 1, tenant, seenRefs);
                     seenRefs.add(rd.reference());
-                    rechargeService.createFromUpload(tenant, rd.retailer(), rd.asset(),
+                    rechargeService.createFromUpload(tenant.getId(), rd.retailer(), rd.asset(),
                             rd.type(), rd.date(), rd.amount(), rd.paymentMethod(),
                             rd.reference(), rd.externalReference(), rd.paymentReference(),
                             rd.servicePeriod(), rd.description(), rd.remarks());
@@ -166,7 +166,7 @@ public class RechargeUploadService {
             payload.put("failureCount", failed);
             payload.put("duplicateCount", duplicates);
             payload.put("totalAmount", totalAmount.toPlainString());
-            eventPublisher.publish(tenant, NotificationEventType.RECHARGE_UPLOAD_COMPLETED,
+            eventPublisher.publish(tenant.getId(), NotificationEventType.RECHARGE_UPLOAD_COMPLETED,
                     "upload", payload);
         } catch (Exception e) {
             log.warn("Failed to publish recharge upload notification: {}", e.getMessage());

@@ -184,7 +184,7 @@ class NotificationProcessorTest {
 
     private OutboxEvent pendingEvent(Long id, NotificationEventType type) {
         OutboxEvent e = new OutboxEvent();
-        e.setTenant(tenant);
+        e.setTenantId(1L);
         e.setEventType(type.name());
         e.setAggregateId("1");
         e.setPayload("{}");
@@ -195,7 +195,7 @@ class NotificationProcessorTest {
 
     private NotificationConfig emailConfig(NotificationEventType type, String recipients) {
         NotificationConfig c = new NotificationConfig();
-        c.setTenant(tenant);
+        c.setTenantId(1L);
         c.setEventType(type);
         c.setChannel(NotificationChannel.EMAIL);
         c.setEnabled(true);
@@ -206,7 +206,7 @@ class NotificationProcessorTest {
 
     private NotificationConfig whatsappConfig(NotificationEventType type, String recipients) {
         NotificationConfig c = new NotificationConfig();
-        c.setTenant(tenant);
+        c.setTenantId(1L);
         c.setEventType(type);
         c.setChannel(NotificationChannel.WHATSAPP);
         c.setEnabled(true);

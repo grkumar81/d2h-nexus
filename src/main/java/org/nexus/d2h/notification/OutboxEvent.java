@@ -3,7 +3,6 @@ package org.nexus.d2h.notification;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.nexus.d2h.tenant.Tenant;
 
 import java.time.Instant;
 
@@ -17,9 +16,8 @@ public class OutboxEvent {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "tenant_id", nullable = false, updatable = false)
-    private Tenant tenant;
+    @Column(name = "tenant_id", nullable = false, updatable = false)
+    private Long tenantId;
 
     @Column(name = "event_type", nullable = false, length = 100)
     private String eventType;

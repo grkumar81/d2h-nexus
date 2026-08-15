@@ -202,7 +202,7 @@ public class RetailerUploadService {
         if (!mobile.matches("^[0-9]{10}$")) throw new BusinessException("VALIDATION_ERROR", "Invalid mobile: " + mobile);
 
         Retailer r = new Retailer();
-        r.setTenant(tenant);
+        r.setTenantId(tenant.getId());
         r.setRetailerCode(code);
         r.setRetailerName(name);
         r.setMobile(mobile);
@@ -230,7 +230,7 @@ public class RetailerUploadService {
         if (!mobile.matches("^[0-9]{10}$")) throw new BusinessException("VALIDATION_ERROR", "Invalid mobile: " + mobile);
 
         Retailer r = new Retailer();
-        r.setTenant(tenant);
+        r.setTenantId(tenant.getId());
         r.setRetailerCode(code);
         r.setRetailerName(name);
         r.setMobile(mobile);

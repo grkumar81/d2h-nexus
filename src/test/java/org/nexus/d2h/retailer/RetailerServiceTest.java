@@ -177,7 +177,7 @@ class RetailerServiceTest {
 
     private Retailer retailerWithId(Long id) {
         Retailer r = new Retailer();
-        r.setTenant(tenant);
+        r.setTenantId(1L);
         r.setRetailerCode("RET001");
         r.setRetailerName("Test Retailer");
         r.setMobile("9876543210");

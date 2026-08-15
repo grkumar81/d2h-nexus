@@ -168,7 +168,7 @@ class NotificationServiceTest {
     private NotificationConfig configWithId(Long id, NotificationEventType eventType,
                                              NotificationChannel channel) {
         NotificationConfig c = new NotificationConfig();
-        c.setTenant(tenant);
+        c.setTenantId(1L);
         c.setEventType(eventType);
         c.setChannel(channel);
         c.setEnabled(true);
@@ -179,14 +179,14 @@ class NotificationServiceTest {
 
     private NotificationDelivery deliveryWithId(Long id) {
         OutboxEvent event = new OutboxEvent();
-        event.setTenant(tenant);
+        event.setTenantId(1L);
         event.setEventType(NotificationEventType.FINANCE_TRANSACTION_CREATED.name());
         event.setAggregateId("1");
         event.setPayload("{}");
         setId(event, 100L);
 
         NotificationDelivery d = new NotificationDelivery();
-        d.setTenant(tenant);
+        d.setTenantId(1L);
         d.setOutboxEvent(event);
         d.setChannel(NotificationChannel.EMAIL);
         d.setRecipient("test@example.com");

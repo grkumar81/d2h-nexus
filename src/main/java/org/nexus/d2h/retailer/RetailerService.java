@@ -40,12 +40,12 @@ public class RetailerService {
         }
 
         Retailer retailer = new Retailer();
-        retailer.setTenant(tenant);
+        retailer.setTenantId(tenant.getId());
         applyCreate(retailer, request);
 
         Retailer saved = retailerRepository.save(retailer);
         log.info("Retailer created: code={} tenant={}", saved.getRetailerCode(), tenant.getTenantCode());
-        auditService.record(tenant, "Retailer", String.valueOf(saved.getId()),
+        auditService.record(tenant.getId(), "Retailer", String.valueOf(saved.getId()),
                 "CREATE", "code=" + saved.getRetailerCode(), null);
         return RetailerDto.from(saved);
     }
@@ -61,7 +61,7 @@ public class RetailerService {
         applyUpdate(retailer, request);
         retailer.setUpdatedBy(currentUsername());
         Retailer saved = retailerRepository.save(retailer);
-        auditService.record(resolveTenant(), "Retailer", String.valueOf(id),
+        auditService.record(resolveTenant().getId(), "Retailer", String.valueOf(id),
                 "UPDATE", "code=" + saved.getRetailerCode(), null);
         return RetailerDto.from(saved);
     }

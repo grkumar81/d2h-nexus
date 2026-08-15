@@ -18,7 +18,7 @@ public interface AssetRepository extends JpaRepository<StbAsset, Long>, JpaSpeci
     @org.springframework.data.jpa.repository.Query("""
             SELECT a.status, COUNT(a)
             FROM StbAsset a
-            WHERE a.tenant.id = :tenantId
+            WHERE a.tenantId = :tenantId
             GROUP BY a.status
             """)
     java.util.List<Object[]> countByStatusForTenant(@org.springframework.data.repository.query.Param("tenantId") Long tenantId);

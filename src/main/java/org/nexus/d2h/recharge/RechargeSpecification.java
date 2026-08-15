@@ -27,7 +27,7 @@ public final class RechargeSpecification {
 
         return (root, cq, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.equal(root.get("tenant").get("id"), tenantId));
+            predicates.add(cb.equal(root.get("tenantId"), tenantId));
 
             if (retailerId != null)
                 predicates.add(cb.equal(root.get("retailer").get("id"), retailerId));

@@ -61,7 +61,7 @@ public class BoxSaleService {
 
         String username = currentUsername();
         StbSale sale = new StbSale();
-        sale.setTenant(tenant);
+        sale.setTenantId(tenant.getId());
         sale.setRetailer(retailer);
         sale.setTransactionDate(request.transactionDate());
         sale.setPaymentStatus(PaymentStatus.PENDING);
@@ -81,7 +81,7 @@ public class BoxSaleService {
 
         StbSale saved = saleRepository.save(sale);
         // Record BOX_SALE finance transaction in the same atomic operation
-        financeService.recordBoxSale(tenant, retailer, saved);
+        financeService.recordBoxSale(tenant.getId(), retailer, saved);
         log.info("Box sale created: id={} retailer={} items={} total={} tenant={}",
                 saved.getId(), retailer.getRetailerCode(),
                 request.items().size(), total, tenant.getTenantCode());

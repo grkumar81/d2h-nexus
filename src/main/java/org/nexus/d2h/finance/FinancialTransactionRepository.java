@@ -19,47 +19,40 @@ public interface FinancialTransactionRepository
 
     boolean existsByTenantIdAndSaleId(Long tenantId, Long saleId);
 
-    // ── Aggregate queries for financial calculations ──────────────────────────
-
-    /** Sum of POSTED BOX_SALE amounts for a retailer = Total Due */
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0)
             FROM FinancialTransaction t
-            WHERE t.tenant.id = :tenantId
+            WHERE t.tenantId = :tenantId
               AND t.retailer.id = :retailerId
               AND t.transactionType = org.nexus.d2h.finance.TransactionType.BOX_SALE
               AND t.transactionStatus = org.nexus.d2h.finance.TransactionStatus.POSTED
             """)
     BigDecimal sumBoxSalesByRetailer(@Param("tenantId") Long tenantId, @Param("retailerId") Long retailerId);
 
-    /** Sum of POSTED PAYMENT_RECEIVED amounts for a retailer = Total Received */
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0)
             FROM FinancialTransaction t
-            WHERE t.tenant.id = :tenantId
+            WHERE t.tenantId = :tenantId
               AND t.retailer.id = :retailerId
               AND t.transactionType = org.nexus.d2h.finance.TransactionType.PAYMENT_RECEIVED
               AND t.transactionStatus = org.nexus.d2h.finance.TransactionStatus.POSTED
             """)
     BigDecimal sumPaymentsReceivedByRetailer(@Param("tenantId") Long tenantId, @Param("retailerId") Long retailerId);
 
-    /** Sum of POSTED RECHARGE amounts for a retailer */
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0)
             FROM FinancialTransaction t
-            WHERE t.tenant.id = :tenantId
+            WHERE t.tenantId = :tenantId
               AND t.retailer.id = :retailerId
               AND t.transactionType = org.nexus.d2h.finance.TransactionType.RECHARGE
               AND t.transactionStatus = org.nexus.d2h.finance.TransactionStatus.POSTED
             """)
     BigDecimal sumRechargeByRetailer(@Param("tenantId") Long tenantId, @Param("retailerId") Long retailerId);
 
-    // ── Tenant-wide aggregates for dashboard/summary ─────────────────────────
-
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0)
             FROM FinancialTransaction t
-            WHERE t.tenant.id = :tenantId
+            WHERE t.tenantId = :tenantId
               AND t.transactionType = org.nexus.d2h.finance.TransactionType.BOX_SALE
               AND t.transactionStatus = org.nexus.d2h.finance.TransactionStatus.POSTED
             """)
@@ -68,7 +61,7 @@ public interface FinancialTransactionRepository
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0)
             FROM FinancialTransaction t
-            WHERE t.tenant.id = :tenantId
+            WHERE t.tenantId = :tenantId
               AND t.transactionType = org.nexus.d2h.finance.TransactionType.PAYMENT_RECEIVED
               AND t.transactionStatus = org.nexus.d2h.finance.TransactionStatus.POSTED
             """)
@@ -77,7 +70,7 @@ public interface FinancialTransactionRepository
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0)
             FROM FinancialTransaction t
-            WHERE t.tenant.id = :tenantId
+            WHERE t.tenantId = :tenantId
               AND t.transactionType = org.nexus.d2h.finance.TransactionType.RECHARGE
               AND t.transactionStatus = org.nexus.d2h.finance.TransactionStatus.POSTED
             """)
@@ -86,17 +79,15 @@ public interface FinancialTransactionRepository
     @Query("""
             SELECT COUNT(t)
             FROM FinancialTransaction t
-            WHERE t.tenant.id = :tenantId
+            WHERE t.tenantId = :tenantId
               AND t.transactionStatus = org.nexus.d2h.finance.TransactionStatus.POSTED
             """)
     long countPostedByTenant(@Param("tenantId") Long tenantId);
 
-    // ── Date-range aggregates for dashboard ───────────────────────────────────
-
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0)
             FROM FinancialTransaction t
-            WHERE t.tenant.id = :tenantId
+            WHERE t.tenantId = :tenantId
               AND t.transactionType = org.nexus.d2h.finance.TransactionType.BOX_SALE
               AND t.transactionStatus = org.nexus.d2h.finance.TransactionStatus.POSTED
               AND t.transactionDate >= :dateFrom AND t.transactionDate <= :dateTo
@@ -108,7 +99,7 @@ public interface FinancialTransactionRepository
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0)
             FROM FinancialTransaction t
-            WHERE t.tenant.id = :tenantId
+            WHERE t.tenantId = :tenantId
               AND t.transactionType = org.nexus.d2h.finance.TransactionType.PAYMENT_RECEIVED
               AND t.transactionStatus = org.nexus.d2h.finance.TransactionStatus.POSTED
               AND t.transactionDate >= :dateFrom AND t.transactionDate <= :dateTo
@@ -120,7 +111,7 @@ public interface FinancialTransactionRepository
     @Query("""
             SELECT COALESCE(SUM(t.amount), 0)
             FROM FinancialTransaction t
-            WHERE t.tenant.id = :tenantId
+            WHERE t.tenantId = :tenantId
               AND t.transactionType = org.nexus.d2h.finance.TransactionType.RECHARGE
               AND t.transactionStatus = org.nexus.d2h.finance.TransactionStatus.POSTED
               AND t.transactionDate >= :dateFrom AND t.transactionDate <= :dateTo
@@ -132,15 +123,13 @@ public interface FinancialTransactionRepository
     @Query("""
             SELECT COUNT(t)
             FROM FinancialTransaction t
-            WHERE t.tenant.id = :tenantId
+            WHERE t.tenantId = :tenantId
               AND t.transactionStatus = org.nexus.d2h.finance.TransactionStatus.POSTED
               AND t.transactionDate >= :dateFrom AND t.transactionDate <= :dateTo
             """)
     long countPostedByTenantAndDateRange(@Param("tenantId") Long tenantId,
                                          @Param("dateFrom") LocalDate dateFrom,
                                          @Param("dateTo") LocalDate dateTo);
-
-    // ── Monthly trend (native SQL for YEAR/MONTH functions) ───────────────────
 
     @Query(value = """
             SELECT YEAR(transaction_date) AS yr, MONTH(transaction_date) AS mo,
@@ -157,8 +146,6 @@ public interface FinancialTransactionRepository
     List<Object[]> monthlyTrend(@Param("tenantId") Long tenantId,
                                 @Param("dateFrom") LocalDate dateFrom,
                                 @Param("dateTo") LocalDate dateTo);
-
-    // ── Top retailers by received / outstanding ────────────────────────────────
 
     @Query(value = """
             SELECT r.id, r.retailer_code, r.retailer_name,

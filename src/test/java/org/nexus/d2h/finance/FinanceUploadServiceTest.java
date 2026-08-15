@@ -48,7 +48,7 @@ class FinanceUploadServiceTest {
         setId(tenant, 1L);
 
         retailer = new Retailer();
-        retailer.setTenant(tenant);
+        retailer.setTenantId(1L);
         retailer.setRetailerCode("RET001");
         retailer.setRetailerName("Test Retailer");
         retailer.setMobile("9876543210");
@@ -60,7 +60,7 @@ class FinanceUploadServiceTest {
 
         when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
         when(retailerRepository.findByTenantIdAndRetailerCode(1L, "RET001")).thenReturn(Optional.of(retailer));
-        when(financeService.createFromUpload(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(financeService.createFromUpload(any(Long.class), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenAnswer(inv -> {
                     var tx = new org.nexus.d2h.finance.FinancialTransaction();
                     tx.setAmount(inv.getArgument(4));
@@ -106,7 +106,7 @@ class FinanceUploadServiceTest {
 
     @Test
     void upload_duplicateReferenceInDb_countedAsDuplicate() {
-        when(financeService.createFromUpload(any(), any(), any(), any(), any(), any(), eq("REF001"), any(), any(), any()))
+        when(financeService.createFromUpload(any(Long.class), any(), any(), any(), any(), any(), eq("REF001"), any(), any(), any()))
                 .thenThrow(new BusinessException("DUPLICATE_REFERENCE", "Duplicate reference: REF001"));
 
         String csv = "retailer_code,transaction_date,transaction_type,amount,reference\n" +

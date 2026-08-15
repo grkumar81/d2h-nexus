@@ -49,7 +49,7 @@ class FinanceServiceTest {
         setId(tenant, 1L);
 
         retailer = new Retailer();
-        retailer.setTenant(tenant);
+        retailer.setTenantId(1L);
         retailer.setRetailerCode("RET001");
         retailer.setRetailerName("Test Retailer");
         retailer.setMobile("9876543210");
@@ -207,7 +207,7 @@ class FinanceServiceTest {
         StbSale sale = saleWithId(20L);
         when(txRepository.existsByTenantIdAndSaleId(1L, 20L)).thenReturn(true);
 
-        financeService.recordBoxSale(tenant, retailer, sale);
+        financeService.recordBoxSale(1L, retailer, sale);
 
         verify(txRepository, never()).save(any());
     }
@@ -249,7 +249,7 @@ class FinanceServiceTest {
 
     private FinancialTransaction txWithId(Long id, TransactionType type, TransactionStatus status) {
         FinancialTransaction tx = new FinancialTransaction();
-        tx.setTenant(tenant);
+        tx.setTenantId(1L);
         tx.setRetailer(retailer);
         tx.setTransactionType(type);
         tx.setTransactionStatus(status);
@@ -262,7 +262,7 @@ class FinanceServiceTest {
 
     private StbSale saleWithId(Long id) {
         StbSale s = new StbSale();
-        s.setTenant(tenant);
+        s.setTenantId(1L);
         s.setRetailer(retailer);
         s.setTransactionDate(LocalDate.now());
         s.setTotalAmount(BigDecimal.valueOf(3000));

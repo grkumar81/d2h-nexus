@@ -64,7 +64,7 @@ public class RechargeService {
         String ref = resolveReference(request.reference(), tenant.getId());
 
         RechargeTransaction tx = new RechargeTransaction();
-        tx.setTenant(tenant);
+        tx.setTenantId(tenant.getId());
         tx.setRetailer(retailer);
         tx.setAsset(asset);
         tx.setReference(ref);
@@ -85,7 +85,7 @@ public class RechargeService {
         log.info("Recharge created: id={} ref={} amount={} retailer={} tenant={}",
                 saved.getId(), saved.getReference(), saved.getAmount(),
                 retailer.getRetailerCode(), tenant.getTenantCode());
-        publishRechargeEvent(NotificationEventType.RECHARGE_CREATED, saved, tenant);
+        publishRechargeEvent(NotificationEventType.RECHARGE_CREATED, saved, tenant.getId());
         return RechargeTransactionDto.from(saved);
     }
 
@@ -129,7 +129,7 @@ public class RechargeService {
                 + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
         RechargeTransaction reversal = new RechargeTransaction();
-        reversal.setTenant(original.getTenant());
+        reversal.setTenantId(original.getTenantId());
         reversal.setRetailer(original.getRetailer());
         reversal.setAsset(original.getAsset());
         reversal.setReference(reversalRef);
@@ -154,7 +154,7 @@ public class RechargeService {
 
         log.info("Recharge {} reversed by {} — reversal id={}",
                 id, currentUsername(), savedReversal.getId());
-        publishRechargeEvent(NotificationEventType.RECHARGE_REVERSED, savedReversal, original.getTenant());
+        publishRechargeEvent(NotificationEventType.RECHARGE_REVERSED, savedReversal, original.getTenantId());
         return RechargeTransactionDto.from(savedReversal);
     }
 
@@ -211,16 +211,16 @@ public class RechargeService {
     // ── Package-private: used by RechargeUploadService ────────────────────────
 
     @Transactional
-    public RechargeTransaction createFromUpload(Tenant tenant, Retailer retailer, StbAsset asset,
+    public RechargeTransaction createFromUpload(Long tenantId, Retailer retailer, StbAsset asset,
                                                  RechargeType type, LocalDate date, BigDecimal amount,
                                                  PaymentMethod paymentMethod, String reference,
                                                  String externalReference, String paymentReference,
                                                  String servicePeriod, String description, String remarks) {
-        if (rechargeRepository.existsByTenantIdAndReference(tenant.getId(), reference)) {
+        if (rechargeRepository.existsByTenantIdAndReference(tenantId, reference)) {
             throw new BusinessException("DUPLICATE_REFERENCE", "Duplicate reference: " + reference);
         }
         RechargeTransaction tx = new RechargeTransaction();
-        tx.setTenant(tenant);
+        tx.setTenantId(tenantId);
         tx.setRetailer(retailer);
         tx.setAsset(asset);
         tx.setReference(reference);
@@ -242,7 +242,7 @@ public class RechargeService {
     // ── Notification helpers ───────────────────────────────────────────────────
 
     private void publishRechargeEvent(NotificationEventType eventType,
-                                       RechargeTransaction tx, Tenant tenant) {
+                                       RechargeTransaction tx, Long tenantId) {
         try {
             java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
             payload.put("rechargeId", tx.getId());
@@ -254,7 +254,7 @@ public class RechargeService {
             payload.put("retailerId", tx.getRetailer().getId());
             payload.put("retailerCode", tx.getRetailer().getRetailerCode());
             payload.put("retailerName", tx.getRetailer().getRetailerName());
-            eventPublisher.publish(tenant, eventType, String.valueOf(tx.getId()), payload);
+            eventPublisher.publish(tenantId, eventType, String.valueOf(tx.getId()), payload);
         } catch (Exception e) {
             log.warn("Failed to publish recharge notification event for tx={}: {}", tx.getId(), e.getMessage());
         }
