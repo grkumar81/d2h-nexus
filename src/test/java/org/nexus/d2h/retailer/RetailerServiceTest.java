@@ -29,6 +29,7 @@ class RetailerServiceTest {
 
     @Mock RetailerRepository retailerRepository;
     @Mock TenantRepository tenantRepository;
+    @Mock org.nexus.d2h.audit.AuditService auditService;
     @InjectMocks RetailerService retailerService;
 
     private Tenant tenant;

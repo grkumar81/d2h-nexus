@@ -305,3 +305,33 @@ export interface UploadResult {
   errors: string[]
   totalAmountProcessed?: number
 }
+
+// ── User Management ───────────────────────────────────────────────────────────────────
+export interface UserDto {
+  id: number
+  username: string
+  email: string
+  fullName: string | null
+  status: string
+  roles: string[]
+  createdAt: string
+}
+export interface CreateUserRequest {
+  username: string
+  email: string
+  password: string
+  fullName?: string
+  roles: string[]
+}
+
+// ── Audit ───────────────────────────────────────────────────────────────────────────
+export interface AuditLog {
+  id: number
+  entityType: string
+  entityId: string
+  action: string
+  performedBy: string
+  details: string | null
+  ipAddress: string | null
+  createdAt: string
+}

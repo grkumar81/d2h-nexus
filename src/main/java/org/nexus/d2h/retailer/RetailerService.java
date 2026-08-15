@@ -1,6 +1,7 @@
 package org.nexus.d2h.retailer;
 
 import lombok.extern.slf4j.Slf4j;
+import org.nexus.d2h.audit.AuditService;
 import org.nexus.d2h.common.BusinessException;
 import org.nexus.d2h.common.PageResponse;
 import org.nexus.d2h.common.ResourceNotFoundException;
@@ -19,10 +20,14 @@ public class RetailerService {
 
     private final RetailerRepository retailerRepository;
     private final TenantRepository tenantRepository;
+    private final AuditService auditService;
 
-    public RetailerService(RetailerRepository retailerRepository, TenantRepository tenantRepository) {
+    public RetailerService(RetailerRepository retailerRepository,
+                           TenantRepository tenantRepository,
+                           AuditService auditService) {
         this.retailerRepository = retailerRepository;
         this.tenantRepository = tenantRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -40,6 +45,8 @@ public class RetailerService {
 
         Retailer saved = retailerRepository.save(retailer);
         log.info("Retailer created: code={} tenant={}", saved.getRetailerCode(), tenant.getTenantCode());
+        auditService.record(tenant, "Retailer", String.valueOf(saved.getId()),
+                "CREATE", "code=" + saved.getRetailerCode(), null);
         return RetailerDto.from(saved);
     }
 
@@ -53,7 +60,10 @@ public class RetailerService {
         Retailer retailer = findForCurrentTenant(id);
         applyUpdate(retailer, request);
         retailer.setUpdatedBy(currentUsername());
-        return RetailerDto.from(retailerRepository.save(retailer));
+        Retailer saved = retailerRepository.save(retailer);
+        auditService.record(resolveTenant(), "Retailer", String.valueOf(id),
+                "UPDATE", "code=" + saved.getRetailerCode(), null);
+        return RetailerDto.from(saved);
     }
 
     @Transactional

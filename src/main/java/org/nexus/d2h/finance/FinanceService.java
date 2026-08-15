@@ -5,6 +5,7 @@ import org.nexus.d2h.boxsale.StbSale;
 import org.nexus.d2h.common.BusinessException;
 import org.nexus.d2h.common.PageResponse;
 import org.nexus.d2h.common.ResourceNotFoundException;
+import org.nexus.d2h.audit.AuditService;
 import org.nexus.d2h.notification.NotificationEventPublisher;
 import org.nexus.d2h.notification.NotificationEventType;
 import org.nexus.d2h.retailer.Retailer;
@@ -30,15 +31,18 @@ public class FinanceService {
     private final TenantRepository tenantRepository;
     private final RetailerRepository retailerRepository;
     private final NotificationEventPublisher eventPublisher;
+    private final AuditService auditService;
 
     public FinanceService(FinancialTransactionRepository txRepository,
                           TenantRepository tenantRepository,
                           RetailerRepository retailerRepository,
-                          NotificationEventPublisher eventPublisher) {
+                          NotificationEventPublisher eventPublisher,
+                          AuditService auditService) {
         this.txRepository = txRepository;
         this.tenantRepository = tenantRepository;
         this.retailerRepository = retailerRepository;
         this.eventPublisher = eventPublisher;
+        this.auditService = auditService;
     }
 
     // ── Manual transaction creation ───────────────────────────────────────────
@@ -60,6 +64,9 @@ public class FinanceService {
                 saved.getId(), saved.getTransactionType(), saved.getAmount(),
                 retailer.getRetailerCode(), tenant.getTenantCode());
         publishFinanceEvent(NotificationEventType.FINANCE_TRANSACTION_CREATED, saved, tenant);
+        auditService.record(tenant, "FinancialTransaction", String.valueOf(saved.getId()),
+                "CREATE", "type=" + saved.getTransactionType() + " amount=" + saved.getAmount()
+                        + " retailer=" + retailer.getRetailerCode(), null);
         return FinancialTransactionDto.from(saved);
     }
 
@@ -154,6 +161,8 @@ public class FinanceService {
 
         log.info("Transaction {} reversed by {} — reversal id={}", id, username, savedReversal.getId());
         publishFinanceEvent(NotificationEventType.FINANCE_TRANSACTION_REVERSED, savedReversal, original.getTenant());
+        auditService.record(original.getTenant(), "FinancialTransaction", String.valueOf(id),
+                "REVERSE", "reversalId=" + savedReversal.getId(), null);
         return FinancialTransactionDto.from(savedReversal);
     }
 
@@ -190,6 +199,8 @@ public class FinanceService {
 
         log.info("Adjustment {} created for transaction {} amount={}", saved.getId(), id, request.adjustmentAmount());
         publishFinanceEvent(NotificationEventType.FINANCE_TRANSACTION_ADJUSTED, saved, original.getTenant());
+        auditService.record(original.getTenant(), "FinancialTransaction", String.valueOf(id),
+                "ADJUST", "adjustmentId=" + saved.getId() + " amount=" + request.adjustmentAmount(), null);
         return FinancialTransactionDto.from(saved);
     }
 

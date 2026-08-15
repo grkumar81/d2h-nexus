@@ -12,6 +12,8 @@ import RechargePage from './pages/recharge/RechargePage'
 import NotificationsPage from './pages/notifications/NotificationsPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
 import ReportsPage from './pages/reports/ReportsPage'
+import AdminPage from './pages/admin/AdminPage'
+import AuditPage from './pages/audit/AuditPage'
 
 export default function App() {
   return (
@@ -36,6 +38,8 @@ export default function App() {
             <Route path="recharges" element={<RechargePage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="reports" element={<ReportsPage />} />
+            <Route path="admin" element={<AdminPage />} />
+            <Route path="audit" element={<AuditPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

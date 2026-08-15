@@ -35,6 +35,8 @@ class FinanceServiceTest {
     @Mock FinancialTransactionRepository txRepository;
     @Mock TenantRepository tenantRepository;
     @Mock RetailerRepository retailerRepository;
+    @Mock org.nexus.d2h.notification.NotificationEventPublisher eventPublisher;
+    @Mock org.nexus.d2h.audit.AuditService auditService;
     @InjectMocks FinanceService financeService;
 
     private Tenant tenant;
