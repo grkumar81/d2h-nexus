@@ -5,6 +5,8 @@ import org.nexus.d2h.boxsale.StbSale;
 import org.nexus.d2h.common.BusinessException;
 import org.nexus.d2h.common.PageResponse;
 import org.nexus.d2h.common.ResourceNotFoundException;
+import org.nexus.d2h.notification.NotificationEventPublisher;
+import org.nexus.d2h.notification.NotificationEventType;
 import org.nexus.d2h.retailer.Retailer;
 import org.nexus.d2h.retailer.RetailerRepository;
 import org.nexus.d2h.tenant.Tenant;
@@ -27,13 +29,16 @@ public class FinanceService {
     private final FinancialTransactionRepository txRepository;
     private final TenantRepository tenantRepository;
     private final RetailerRepository retailerRepository;
+    private final NotificationEventPublisher eventPublisher;
 
     public FinanceService(FinancialTransactionRepository txRepository,
                           TenantRepository tenantRepository,
-                          RetailerRepository retailerRepository) {
+                          RetailerRepository retailerRepository,
+                          NotificationEventPublisher eventPublisher) {
         this.txRepository = txRepository;
         this.tenantRepository = tenantRepository;
         this.retailerRepository = retailerRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     // ── Manual transaction creation ───────────────────────────────────────────
@@ -54,6 +59,7 @@ public class FinanceService {
         log.info("Finance tx created: id={} type={} amount={} retailer={} tenant={}",
                 saved.getId(), saved.getTransactionType(), saved.getAmount(),
                 retailer.getRetailerCode(), tenant.getTenantCode());
+        publishFinanceEvent(NotificationEventType.FINANCE_TRANSACTION_CREATED, saved, tenant);
         return FinancialTransactionDto.from(saved);
     }
 
@@ -147,6 +153,7 @@ public class FinanceService {
         txRepository.save(original);
 
         log.info("Transaction {} reversed by {} — reversal id={}", id, username, savedReversal.getId());
+        publishFinanceEvent(NotificationEventType.FINANCE_TRANSACTION_REVERSED, savedReversal, original.getTenant());
         return FinancialTransactionDto.from(savedReversal);
     }
 
@@ -182,6 +189,7 @@ public class FinanceService {
         FinancialTransaction saved = txRepository.save(adjustment);
 
         log.info("Adjustment {} created for transaction {} amount={}", saved.getId(), id, request.adjustmentAmount());
+        publishFinanceEvent(NotificationEventType.FINANCE_TRANSACTION_ADJUSTED, saved, original.getTenant());
         return FinancialTransactionDto.from(saved);
     }
 
@@ -234,6 +242,34 @@ public class FinanceService {
                 paymentMethod, reference, paymentReference, description, remarks,
                 TransactionSource.UPLOAD, null);
         return txRepository.save(tx);
+    }
+
+    // ── Notification helpers ───────────────────────────────────────────────────
+
+    private void publishFinanceEvent(NotificationEventType eventType,
+                                      FinancialTransaction tx, Tenant tenant) {
+        try {
+            // Fetch financial position for the notification payload
+            BigDecimal totalDue = txRepository.sumBoxSalesByRetailer(tenant.getId(), tx.getRetailer().getId());
+            BigDecimal totalReceived = txRepository.sumPaymentsReceivedByRetailer(tenant.getId(), tx.getRetailer().getId());
+            BigDecimal totalRecharge = txRepository.sumRechargeByRetailer(tenant.getId(), tx.getRetailer().getId());
+            java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+            payload.put("transactionId", tx.getId());
+            payload.put("transactionType", tx.getTransactionType().name());
+            payload.put("transactionDate", tx.getTransactionDate().toString());
+            payload.put("amount", tx.getAmount().toPlainString());
+            payload.put("reference", tx.getReference());
+            payload.put("retailerId", tx.getRetailer().getId());
+            payload.put("retailerCode", tx.getRetailer().getRetailerCode());
+            payload.put("retailerName", tx.getRetailer().getRetailerName());
+            payload.put("totalDue", totalDue.toPlainString());
+            payload.put("totalReceived", totalReceived.toPlainString());
+            payload.put("outstanding", totalDue.subtract(totalReceived).toPlainString());
+            payload.put("totalRecharge", totalRecharge.toPlainString());
+            eventPublisher.publish(tenant, eventType, String.valueOf(tx.getId()), payload);
+        } catch (Exception e) {
+            log.warn("Failed to publish notification event for tx={}: {}", tx.getId(), e.getMessage());
+        }
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

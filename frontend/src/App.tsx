@@ -9,6 +9,7 @@ import BoxSalesPage from './pages/boxsales/BoxSalesPage'
 import FinancePage from './pages/finance/FinancePage'
 import OutstandingPage from './pages/finance/OutstandingPage'
 import RechargePage from './pages/recharge/RechargePage'
+import NotificationsPage from './pages/notifications/NotificationsPage'
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
             <Route path="finance" element={<FinancePage />} />
             <Route path="finance/outstanding" element={<OutstandingPage />} />
             <Route path="recharges" element={<RechargePage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

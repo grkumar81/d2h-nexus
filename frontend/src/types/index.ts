@@ -204,7 +204,40 @@ export interface RetailerRechargeSummary {
   lastRechargeAmount: number | null
 }
 
-// ── Upload ────────────────────────────────────────────────────────────────────
+// ── Notification ─────────────────────────────────────────────────────────────
+export type NotificationEventType =
+  | 'FINANCE_TRANSACTION_CREATED' | 'FINANCE_TRANSACTION_REVERSED' | 'FINANCE_TRANSACTION_ADJUSTED'
+  | 'FINANCE_UPLOAD_COMPLETED' | 'RECHARGE_CREATED' | 'RECHARGE_REVERSED' | 'RECHARGE_UPLOAD_COMPLETED'
+export type NotificationChannel = 'EMAIL' | 'WHATSAPP'
+export type NotificationStatus = 'PENDING' | 'PROCESSING' | 'SENT' | 'FAILED' | 'RETRYING' | 'CANCELLED'
+
+export interface NotificationConfig {
+  id: number
+  eventType: NotificationEventType
+  channel: NotificationChannel
+  enabled: boolean
+  recipients: string | null
+  updatedAt: string
+}
+export interface SaveNotificationConfigRequest {
+  eventType: NotificationEventType
+  channel: NotificationChannel
+  enabled: boolean
+  recipients: string
+}
+export interface NotificationDelivery {
+  id: number
+  outboxEventId: number
+  eventType: string
+  channel: NotificationChannel
+  recipient: string
+  status: NotificationStatus
+  attempts: number
+  sentAt: string | null
+  errorMessage: string | null
+  createdAt: string
+}
+
 export interface UploadResult {
   totalRows: number
   successCount: number

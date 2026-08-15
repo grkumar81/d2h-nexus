@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.nexus.d2h.common.BusinessException;
 import org.nexus.d2h.finance.*;
+import org.nexus.d2h.notification.NotificationEventPublisher;
+import org.nexus.d2h.notification.NotificationEventType;
 import org.nexus.d2h.retailer.Retailer;
 import org.nexus.d2h.retailer.RetailerRepository;
 import org.nexus.d2h.tenant.Tenant;
@@ -35,13 +37,16 @@ public class FinanceUploadService {
     private final FinanceService financeService;
     private final RetailerRepository retailerRepository;
     private final TenantRepository tenantRepository;
+    private final NotificationEventPublisher eventPublisher;
 
     public FinanceUploadService(FinanceService financeService,
                                 RetailerRepository retailerRepository,
-                                TenantRepository tenantRepository) {
+                                TenantRepository tenantRepository,
+                                NotificationEventPublisher eventPublisher) {
         this.financeService = financeService;
         this.retailerRepository = retailerRepository;
         this.tenantRepository = tenantRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -98,6 +103,7 @@ public class FinanceUploadService {
         int failed = counters[0] - counters[1] - counters[2];
         log.info("Finance CSV upload: total={} success={} failed={} dup={} tenant={}",
                 counters[0], counters[1], failed, counters[2], tenant.getTenantCode());
+        publishUploadEvent(tenant, counters[0], counters[1], failed, counters[2], amounts[0]);
         return new FinanceUploadResult(UUID.randomUUID().toString(), counters[0], counters[1],
                 failed, counters[2], amounts[0], errors);
     }
@@ -141,8 +147,27 @@ public class FinanceUploadService {
         int failed = counters[0] - counters[1] - counters[2];
         log.info("Finance Excel upload: total={} success={} failed={} dup={} tenant={}",
                 counters[0], counters[1], failed, counters[2], tenant.getTenantCode());
+        publishUploadEvent(tenant, counters[0], counters[1], failed, counters[2], amounts[0]);
         return new FinanceUploadResult(UUID.randomUUID().toString(), counters[0], counters[1],
                 failed, counters[2], amounts[0], errors);
+    }
+
+    // ── Notification ──────────────────────────────────────────────────────────
+
+    private void publishUploadEvent(Tenant tenant, int total, int success, int failed,
+                                     int duplicates, BigDecimal totalAmount) {
+        try {
+            java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+            payload.put("totalRows", total);
+            payload.put("successCount", success);
+            payload.put("failureCount", failed);
+            payload.put("duplicateCount", duplicates);
+            payload.put("totalAmount", totalAmount.toPlainString());
+            eventPublisher.publish(tenant, NotificationEventType.FINANCE_UPLOAD_COMPLETED,
+                    "upload", payload);
+        } catch (Exception e) {
+            log.warn("Failed to publish finance upload notification: {}", e.getMessage());
+        }
     }
 
     // ── Row parsing ───────────────────────────────────────────────────────────

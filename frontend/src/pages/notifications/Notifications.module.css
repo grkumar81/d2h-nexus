@@ -1,0 +1,85 @@
+.page { padding: 1.5rem; }
+.title { margin: 0 0 1rem; font-size: 1.4rem; }
+
+.tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid #e5e7eb; }
+.tab {
+  padding: 0.5rem 1.25rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #6b7280;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+.tab:hover { color: #111827; }
+.activeTab { color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }
+
+.form {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  max-width: 600px;
+}
+.form h3 { margin: 0 0 1rem; font-size: 1rem; }
+.formRow { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.75rem; }
+.formRow label { font-size: 0.85rem; font-weight: 500; color: #374151; }
+.formRow input[type="text"],
+.formRow select {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+.form button[type="submit"] {
+  padding: 0.45rem 1.25rem;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.form button[type="submit"]:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.table th, .table td {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+.table th { background: #f3f4f6; font-weight: 600; color: #374151; }
+.table tr:hover td { background: #f9fafb; }
+
+.recipients { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.errorCell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #dc2626; font-size: 0.8rem; }
+
+.deleteBtn {
+  padding: 0.25rem 0.6rem;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.deleteBtn:hover { background: #fecaca; }
+
+.statusSent { color: #16a34a; font-weight: 600; }
+.statusFailed { color: #dc2626; font-weight: 600; }
+.statusRetrying { color: #d97706; font-weight: 600; }
+
+.pagination { display: flex; align-items: center; gap: 1rem; margin-top: 1rem; font-size: 0.875rem; }
+.pagination button {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+.pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.state { color: #6b7280; padding: 1rem 0; }
+.error { color: #dc2626; padding: 0.5rem 0; }

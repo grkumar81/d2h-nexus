@@ -7,6 +7,8 @@ import org.nexus.d2h.common.BusinessException;
 import org.nexus.d2h.common.PageResponse;
 import org.nexus.d2h.common.ResourceNotFoundException;
 import org.nexus.d2h.finance.PaymentMethod;
+import org.nexus.d2h.notification.NotificationEventPublisher;
+import org.nexus.d2h.notification.NotificationEventType;
 import org.nexus.d2h.retailer.Retailer;
 import org.nexus.d2h.retailer.RetailerRepository;
 import org.nexus.d2h.retailer.RetailerStatus;
@@ -31,15 +33,18 @@ public class RechargeService {
     private final TenantRepository tenantRepository;
     private final RetailerRepository retailerRepository;
     private final AssetRepository assetRepository;
+    private final NotificationEventPublisher eventPublisher;
 
     public RechargeService(RechargeTransactionRepository rechargeRepository,
                            TenantRepository tenantRepository,
                            RetailerRepository retailerRepository,
-                           AssetRepository assetRepository) {
+                           AssetRepository assetRepository,
+                           NotificationEventPublisher eventPublisher) {
         this.rechargeRepository = rechargeRepository;
         this.tenantRepository = tenantRepository;
         this.retailerRepository = retailerRepository;
         this.assetRepository = assetRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     // ── Create ────────────────────────────────────────────────────────────────
@@ -80,6 +85,7 @@ public class RechargeService {
         log.info("Recharge created: id={} ref={} amount={} retailer={} tenant={}",
                 saved.getId(), saved.getReference(), saved.getAmount(),
                 retailer.getRetailerCode(), tenant.getTenantCode());
+        publishRechargeEvent(NotificationEventType.RECHARGE_CREATED, saved, tenant);
         return RechargeTransactionDto.from(saved);
     }
 
@@ -148,6 +154,7 @@ public class RechargeService {
 
         log.info("Recharge {} reversed by {} — reversal id={}",
                 id, currentUsername(), savedReversal.getId());
+        publishRechargeEvent(NotificationEventType.RECHARGE_REVERSED, savedReversal, original.getTenant());
         return RechargeTransactionDto.from(savedReversal);
     }
 
@@ -230,6 +237,27 @@ public class RechargeService {
         tx.setSource(RechargeSource.UPLOAD);
         tx.setUpdatedBy("upload");
         return rechargeRepository.save(tx);
+    }
+
+    // ── Notification helpers ───────────────────────────────────────────────────
+
+    private void publishRechargeEvent(NotificationEventType eventType,
+                                       RechargeTransaction tx, Tenant tenant) {
+        try {
+            java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+            payload.put("rechargeId", tx.getId());
+            payload.put("rechargeType", tx.getRechargeType().name());
+            payload.put("rechargeDate", tx.getRechargeDate().toString());
+            payload.put("amount", tx.getAmount().toPlainString());
+            payload.put("reference", tx.getReference());
+            payload.put("rechargeStatus", tx.getRechargeStatus().name());
+            payload.put("retailerId", tx.getRetailer().getId());
+            payload.put("retailerCode", tx.getRetailer().getRetailerCode());
+            payload.put("retailerName", tx.getRetailer().getRetailerName());
+            eventPublisher.publish(tenant, eventType, String.valueOf(tx.getId()), payload);
+        } catch (Exception e) {
+            log.warn("Failed to publish recharge notification event for tx={}: {}", tx.getId(), e.getMessage());
+        }
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

@@ -8,6 +8,8 @@ import org.nexus.d2h.asset.AssetRepository;
 import org.nexus.d2h.asset.StbAsset;
 import org.nexus.d2h.common.BusinessException;
 import org.nexus.d2h.finance.PaymentMethod;
+import org.nexus.d2h.notification.NotificationEventPublisher;
+import org.nexus.d2h.notification.NotificationEventType;
 import org.nexus.d2h.recharge.RechargeService;
 import org.nexus.d2h.recharge.RechargeType;
 import org.nexus.d2h.retailer.Retailer;
@@ -40,15 +42,18 @@ public class RechargeUploadService {
     private final RetailerRepository retailerRepository;
     private final AssetRepository assetRepository;
     private final TenantRepository tenantRepository;
+    private final NotificationEventPublisher eventPublisher;
 
     public RechargeUploadService(RechargeService rechargeService,
                                   RetailerRepository retailerRepository,
                                   AssetRepository assetRepository,
-                                  TenantRepository tenantRepository) {
+                                  TenantRepository tenantRepository,
+                                  NotificationEventPublisher eventPublisher) {
         this.rechargeService = rechargeService;
         this.retailerRepository = retailerRepository;
         this.assetRepository = assetRepository;
         this.tenantRepository = tenantRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -100,6 +105,7 @@ public class RechargeUploadService {
         int failed = counters[0] - counters[1] - counters[2];
         log.info("Recharge CSV upload: total={} success={} failed={} dup={} tenant={}",
                 counters[0], counters[1], failed, counters[2], tenant.getTenantCode());
+        publishUploadEvent(tenant, counters[0], counters[1], failed, counters[2], amounts[0]);
         return new RechargeUploadResult(UUID.randomUUID().toString(), counters[0], counters[1],
                 failed, counters[2], amounts[0], errors);
     }
@@ -144,8 +150,27 @@ public class RechargeUploadService {
         int failed = counters[0] - counters[1] - counters[2];
         log.info("Recharge Excel upload: total={} success={} failed={} dup={} tenant={}",
                 counters[0], counters[1], failed, counters[2], tenant.getTenantCode());
+        publishUploadEvent(tenant, counters[0], counters[1], failed, counters[2], amounts[0]);
         return new RechargeUploadResult(UUID.randomUUID().toString(), counters[0], counters[1],
                 failed, counters[2], amounts[0], errors);
+    }
+
+    // ── Notification ──────────────────────────────────────────────────────────
+
+    private void publishUploadEvent(Tenant tenant, int total, int success, int failed,
+                                     int duplicates, BigDecimal totalAmount) {
+        try {
+            java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+            payload.put("totalRows", total);
+            payload.put("successCount", success);
+            payload.put("failureCount", failed);
+            payload.put("duplicateCount", duplicates);
+            payload.put("totalAmount", totalAmount.toPlainString());
+            eventPublisher.publish(tenant, NotificationEventType.RECHARGE_UPLOAD_COMPLETED,
+                    "upload", payload);
+        } catch (Exception e) {
+            log.warn("Failed to publish recharge upload notification: {}", e.getMessage());
+        }
     }
 
     // ── Row parsing ───────────────────────────────────────────────────────────

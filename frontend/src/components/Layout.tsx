@@ -9,6 +9,7 @@ const NAV = [
   { to: '/finance', label: 'Finance' },
   { to: '/finance/outstanding', label: 'Outstanding' },
   { to: '/recharges', label: 'Recharge' },
+  { to: '/notifications', label: 'Notifications' },
 ]
 
 export default function Layout() {
