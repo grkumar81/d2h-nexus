@@ -238,6 +238,46 @@ export interface NotificationDelivery {
   createdAt: string
 }
 
+// ── Dashboard ────────────────────────────────────────────────────────────────
+export interface MonthlyTrend {
+  year: number
+  month: number
+  boxSales: number
+  received: number
+  recharge: number
+  outstanding: number
+}
+export interface TopRetailer {
+  retailerId: number
+  retailerCode: string
+  retailerName: string
+  amount: number
+}
+export interface Dashboard {
+  totalBoxSales: number
+  totalReceived: number
+  totalOutstanding: number
+  totalRecharge: number
+  transactionCount: number
+  totalAssets: number
+  availableAssets: number
+  allocatedAssets: number
+  soldAssets: number
+  activatedAssets: number
+  returnedAssets: number
+  damagedAssets: number
+  lostAssets: number
+  totalRetailers: number
+  activeRetailers: number
+  inactiveRetailers: number
+  retailersWithOutstanding: number
+  monthlyTrend: MonthlyTrend[]
+  topByReceived: TopRetailer[]
+  topByOutstanding: TopRetailer[]
+  financialYearStart: number
+  financialYearEnd: number
+}
+
 export interface UploadResult {
   totalRows: number
   successCount: number

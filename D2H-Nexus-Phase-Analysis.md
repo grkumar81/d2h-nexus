@@ -596,11 +596,11 @@ Never claim a command/test/build/push succeeded unless actually executed.
 | 1 | Foundation, Security, Multi-Tenancy | COMPLETED |
 | 2 | Retailer Management | COMPLETED |
 | 3 | Asset Management + Box Sales | COMPLETED |
-| 4 | Finance Management | CURRENT |
-| 5 | Recharge | PLANNED |
-| 6 | Email + WhatsApp Notifications | PLANNED |
-| 7 | Dashboard | PLANNED |
-| 8 | Reports + Exports | PLANNED |
+| 4 | Finance Management | COMPLETED |
+| 5 | Recharge | COMPLETED |
+| 6 | Email + WhatsApp Notifications | COMPLETED |
+| 7 | Dashboard | COMPLETED |
+| 8 | Reports + Exports | CURRENT |
 | 9 | Production Hardening | PLANNED |
 
 ## 27. Current Phase — Finance

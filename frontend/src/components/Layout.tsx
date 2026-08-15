@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import styles from './Layout.module.css'
 
 const NAV = [
+  { to: '/dashboard', label: 'Dashboard' },
   { to: '/retailers', label: 'Retailers' },
   { to: '/assets', label: 'Assets' },
   { to: '/box-sales', label: 'Box Sales' },

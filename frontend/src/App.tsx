@@ -10,6 +10,7 @@ import FinancePage from './pages/finance/FinancePage'
 import OutstandingPage from './pages/finance/OutstandingPage'
 import RechargePage from './pages/recharge/RechargePage'
 import NotificationsPage from './pages/notifications/NotificationsPage'
+import DashboardPage from './pages/dashboard/DashboardPage'
 
 export default function App() {
   return (
@@ -24,7 +25,8 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="/finance/outstanding" replace />} />
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<DashboardPage />} />
             <Route path="retailers" element={<RetailersPage />} />
             <Route path="assets" element={<AssetsPage />} />
             <Route path="box-sales" element={<BoxSalesPage />} />

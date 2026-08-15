@@ -14,4 +14,14 @@ public interface AssetRepository extends JpaRepository<StbAsset, Long>, JpaSpeci
     Optional<StbAsset> findByIdAndTenantId(Long id, Long tenantId);
 
     Optional<StbAsset> findByTenantIdAndSerialNumber(Long tenantId, String serialNumber);
+
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT a.status, COUNT(a)
+            FROM StbAsset a
+            WHERE a.tenant.id = :tenantId
+            GROUP BY a.status
+            """)
+    java.util.List<Object[]> countByStatusForTenant(@org.springframework.data.repository.query.Param("tenantId") Long tenantId);
+
+    long countByTenantId(Long tenantId);
 }

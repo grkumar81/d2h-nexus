@@ -14,4 +14,8 @@ public interface RetailerRepository extends JpaRepository<Retailer, Long>, JpaSp
     Optional<Retailer> findByIdAndTenantId(Long id, Long tenantId);
 
     Optional<Retailer> findByTenantIdAndRetailerCode(Long tenantId, String retailerCode);
+
+    long countByTenantId(Long tenantId);
+
+    long countByTenantIdAndStatus(Long tenantId, RetailerStatus status);
 }
