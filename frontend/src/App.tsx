@@ -11,6 +11,7 @@ import OutstandingPage from './pages/finance/OutstandingPage'
 import RechargePage from './pages/recharge/RechargePage'
 import NotificationsPage from './pages/notifications/NotificationsPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
+import ReportsPage from './pages/reports/ReportsPage'
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
             <Route path="finance/outstanding" element={<OutstandingPage />} />
             <Route path="recharges" element={<RechargePage />} />
             <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="reports" element={<ReportsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

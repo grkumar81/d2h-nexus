@@ -1,0 +1,128 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.header h2 { margin: 0; font-size: 1.4rem; }
+
+.tabs { display: flex; gap: 0.5rem; }
+
+.tab, .activeTab {
+  padding: 0.4rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  background: #fff;
+}
+
+.activeTab {
+  background: #4f8ef7;
+  color: #fff;
+  border-color: #4f8ef7;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.filters label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.filters input[type="date"] {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.btnPrimary {
+  padding: 0.4rem 1rem;
+  background: #4f8ef7;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btnSecondary {
+  padding: 0.4rem 1rem;
+  background: #fff;
+  color: #333;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btnSecondary:hover { background: #f5f5f5; }
+
+.grid { width: 100%; min-height: 300px; }
+
+.periodCard {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.periodGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.kpiCard {
+  flex: 1 1 140px;
+  padding: 1rem;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border-left: 4px solid #4f8ef7;
+}
+
+.kpiValue { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.25rem; }
+.kpiLabel { font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.periodMeta {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.error {
+  padding: 0.75rem 1rem;
+  background: #fff3f3;
+  border: 1px solid #f5c6c6;
+  border-radius: 4px;
+  color: #c0392b;
+  font-size: 0.9rem;
+}
+
+.empty {
+  padding: 2rem;
+  text-align: center;
+  color: #aaa;
+  font-size: 0.9rem;
+}

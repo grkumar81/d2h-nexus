@@ -600,8 +600,8 @@ Never claim a command/test/build/push succeeded unless actually executed.
 | 5 | Recharge | COMPLETED |
 | 6 | Email + WhatsApp Notifications | COMPLETED |
 | 7 | Dashboard | COMPLETED |
-| 8 | Reports + Exports | CURRENT |
-| 9 | Production Hardening | PLANNED |
+| 8 | Reports + Exports | COMPLETED |
+| 9 | Production Hardening | CURRENT |
 
 ## 27. Current Phase — Finance
 

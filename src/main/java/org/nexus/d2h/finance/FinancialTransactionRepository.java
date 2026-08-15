@@ -188,4 +188,22 @@ public interface FinancialTransactionRepository
             LIMIT :limit
             """, nativeQuery = true)
     List<Object[]> topRetailersByOutstanding(@Param("tenantId") Long tenantId, @Param("limit") int limit);
+
+    @Query(value = """
+            SELECT r.id, r.retailer_code, r.retailer_name,
+                   COALESCE(SUM(CASE WHEN t.transaction_type = 'BOX_SALE'         THEN t.amount ELSE 0 END), 0) AS boxSales,
+                   COALESCE(SUM(CASE WHEN t.transaction_type = 'PAYMENT_RECEIVED' THEN t.amount ELSE 0 END), 0) AS received,
+                   COALESCE(SUM(CASE WHEN t.transaction_type = 'RECHARGE'         THEN t.amount ELSE 0 END), 0) AS recharge
+            FROM retailers r
+            LEFT JOIN financial_transactions t
+                   ON t.retailer_id = r.id AND t.tenant_id = r.tenant_id AND t.transaction_status = 'POSTED'
+                  AND (:dateFrom IS NULL OR t.transaction_date >= :dateFrom)
+                  AND (:dateTo   IS NULL OR t.transaction_date <= :dateTo)
+            WHERE r.tenant_id = :tenantId
+            GROUP BY r.id, r.retailer_code, r.retailer_name
+            ORDER BY r.retailer_code
+            """, nativeQuery = true)
+    List<Object[]> allRetailerReport(@Param("tenantId") Long tenantId,
+                                     @Param("dateFrom") LocalDate dateFrom,
+                                     @Param("dateTo") LocalDate dateTo);
 }

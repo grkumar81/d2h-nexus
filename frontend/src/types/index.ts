@@ -278,6 +278,26 @@ export interface Dashboard {
   financialYearEnd: number
 }
 
+// ── Reports ──────────────────────────────────────────────────────────────────
+export interface RetailerReport {
+  retailerId: number
+  retailerCode: string
+  retailerName: string
+  boxSales: number
+  received: number
+  outstanding: number
+  recharge: number
+}
+export interface PeriodReport {
+  dateFrom: string | null
+  dateTo: string | null
+  boxSales: number
+  received: number
+  outstanding: number
+  recharge: number
+  transactionCount: number
+}
+
 export interface UploadResult {
   totalRows: number
   successCount: number
