@@ -31,6 +31,8 @@ public class TenantContextFilter extends OncePerRequestFilter {
                 if (tenantCode != null && !tenantCode.isBlank()) {
                     TenantContext.setCurrentTenant(tenantCode);
                     log.debug("Tenant context set: {}", tenantCode);
+                } else {
+                    log.debug("No tenant context for user: {} roles={}", principal.username(), principal.roles());
                 }
             }
             filterChain.doFilter(request, response);

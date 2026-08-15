@@ -58,14 +58,14 @@ public class AuthService {
         user.setLockedUntil(null);
         userRepository.save(user);
 
-        // Resolve tenant code from the user's first active tenant
-        String tenantCode = user.getTenants().stream()
-                .findFirst()
-                .map(t -> t.getTenantCode())
-                .orElse(null);
+        // PLATFORM_ADMIN users have no tenant association — tenantCode is null in their JWT.
+        // Regular users resolve tenantCode from their first associated tenant.
+        boolean isPlatformAdmin = user.getRoles().contains("PLATFORM_ADMIN");
+        String tenantCode = isPlatformAdmin ? null
+                : user.getTenants().stream().findFirst().map(t -> t.getTenantCode()).orElse(null);
 
         String token = jwtService.generateToken(user.getId(), user.getUsername(), tenantCode, user.getRoles());
-        log.info("User '{}' logged in successfully", user.getUsername());
+        log.info("User '{}' logged in: tenantCode={} roles={}", user.getUsername(), tenantCode, user.getRoles());
 
         return new LoginResponse(token, user.getUsername(), tenantCode, user.getRoles(), jwtProperties.getExpirationMs());
     }
