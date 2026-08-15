@@ -1,0 +1,28 @@
+.page { display: flex; flex-direction: column; height: 100%; }
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.toolbar h2 { margin: 0; font-size: 1.2rem; color: #1a1a2e; }
+
+.actions { display: flex; gap: 10px; align-items: center; }
+
+.search {
+  padding: 7px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  width: 200px;
+}
+
+.uploadBtn {
+  padding: 7px 14px;
+  background: #0f3460;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}

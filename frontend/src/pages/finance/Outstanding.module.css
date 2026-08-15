@@ -1,0 +1,29 @@
+.page { display: flex; flex-direction: column; }
+
+.page h2 { margin: 0 0 16px; font-size: 1.2rem; color: #1a1a2e; }
+
+.cards {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}
+
+.card span { font-size: 0.8rem; color: #777; }
+.card strong { font-size: 1.2rem; color: #1a1a2e; }
+
+.highlight { border-color: #e53935; }
+.highlight strong { color: #c62828; }
+
+.error { color: #c62828; font-size: 0.85rem; }

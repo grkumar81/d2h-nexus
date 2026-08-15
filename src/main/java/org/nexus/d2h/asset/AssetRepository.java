@@ -12,4 +12,6 @@ public interface AssetRepository extends JpaRepository<StbAsset, Long>, JpaSpeci
     boolean existsByTenantIdAndSerialNumberAndIdNot(Long tenantId, String serialNumber, Long id);
 
     Optional<StbAsset> findByIdAndTenantId(Long id, Long tenantId);
+
+    Optional<StbAsset> findByTenantIdAndSerialNumber(Long tenantId, String serialNumber);
 }
