@@ -38,3 +38,8 @@ build/
 
 ### Maven unpack temp ###
 target/unpack-*/
+
+### Frontend ###
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
