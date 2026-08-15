@@ -14,9 +14,6 @@ import org.nexus.d2h.common.ResourceNotFoundException;
 import org.nexus.d2h.finance.FinanceService;
 import org.nexus.d2h.retailer.Retailer;
 import org.nexus.d2h.retailer.RetailerRepository;
-import org.nexus.d2h.tenant.Tenant;
-import org.nexus.d2h.tenant.TenantContext;
-import org.nexus.d2h.tenant.TenantRepository;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -36,44 +33,34 @@ class BoxSaleServiceTest {
 
     @Mock SaleRepository saleRepository;
     @Mock AssetService assetService;
-    @Mock TenantRepository tenantRepository;
     @Mock RetailerRepository retailerRepository;
     @Mock FinanceService financeService;
     @InjectMocks BoxSaleService boxSaleService;
 
-    private Tenant tenant;
     private Retailer retailer;
 
     @BeforeEach
     void setUp() {
-        tenant = new Tenant();
-        tenant.setTenantCode("T1");
-        setId(tenant, 1L);
-
         retailer = new Retailer();
-        retailer.setTenantId(1L);
         retailer.setRetailerCode("RET001");
         retailer.setRetailerName("Test Retailer");
         retailer.setMobile("9876543210");
         setId(retailer, 5L);
 
-        TenantContext.setCurrentTenant("T1");
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("user", null, List.of()));
     }
 
     @BeforeEach
     void tearDown() {
-        TenantContext.clear();
         SecurityContextHolder.clearContext();
     }
 
     @Test
     void create_success_singleItem() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(retailerRepository.findByIdAndTenantId(5L, 1L)).thenReturn(Optional.of(retailer));
+        when(retailerRepository.findById(5L)).thenReturn(Optional.of(retailer));
         StbAsset asset = assetWithId(10L);
-        when(assetService.markSold(eq(10L), eq(1L), any(), any())).thenReturn(asset);
+        when(assetService.markSold(eq(10L), any(), any())).thenReturn(asset);
         when(saleRepository.save(any())).thenAnswer(inv -> {
             StbSale s = inv.getArgument(0);
             setId(s, 100L);
@@ -93,10 +80,9 @@ class BoxSaleServiceTest {
 
     @Test
     void create_multipleItems_totalSummed() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(retailerRepository.findByIdAndTenantId(5L, 1L)).thenReturn(Optional.of(retailer));
-        when(assetService.markSold(eq(10L), eq(1L), any(), any())).thenReturn(assetWithId(10L));
-        when(assetService.markSold(eq(11L), eq(1L), any(), any())).thenReturn(assetWithId(11L));
+        when(retailerRepository.findById(5L)).thenReturn(Optional.of(retailer));
+        when(assetService.markSold(eq(10L), any(), any())).thenReturn(assetWithId(10L));
+        when(assetService.markSold(eq(11L), any(), any())).thenReturn(assetWithId(11L));
         when(saleRepository.save(any())).thenAnswer(inv -> { setId(inv.getArgument(0), 100L); return inv.getArgument(0); });
 
         var request = new CreateSaleRequest(5L, LocalDate.now(), List.of(
@@ -112,8 +98,7 @@ class BoxSaleServiceTest {
 
     @Test
     void create_duplicateAssetInRequest_throwsBusinessException() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(retailerRepository.findByIdAndTenantId(5L, 1L)).thenReturn(Optional.of(retailer));
+        when(retailerRepository.findById(5L)).thenReturn(Optional.of(retailer));
 
         var request = new CreateSaleRequest(5L, LocalDate.now(), List.of(
                 new CreateSaleRequest.SaleItemRequest(10L, BigDecimal.valueOf(1500)),
@@ -127,9 +112,8 @@ class BoxSaleServiceTest {
 
     @Test
     void create_unavailableAsset_throwsBusinessException() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(retailerRepository.findByIdAndTenantId(5L, 1L)).thenReturn(Optional.of(retailer));
-        when(assetService.markSold(eq(10L), eq(1L), any(), any()))
+        when(retailerRepository.findById(5L)).thenReturn(Optional.of(retailer));
+        when(assetService.markSold(eq(10L), any(), any()))
                 .thenThrow(new BusinessException("ASSET_NOT_SALEABLE", "Asset is not available for sale"));
 
         var request = new CreateSaleRequest(5L, LocalDate.now(),
@@ -143,8 +127,7 @@ class BoxSaleServiceTest {
 
     @Test
     void create_retailerNotFound_throwsResourceNotFoundException() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(retailerRepository.findByIdAndTenantId(99L, 1L)).thenReturn(Optional.empty());
+        when(retailerRepository.findById(99L)).thenReturn(Optional.empty());
 
         var request = new CreateSaleRequest(99L, LocalDate.now(),
                 List.of(new CreateSaleRequest.SaleItemRequest(10L, BigDecimal.valueOf(1500))),
@@ -156,8 +139,7 @@ class BoxSaleServiceTest {
 
     @Test
     void getById_notFound_throwsResourceNotFoundException() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(saleRepository.findByIdAndTenantId(99L, 1L)).thenReturn(Optional.empty());
+        when(saleRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> boxSaleService.getById(99L))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -166,8 +148,7 @@ class BoxSaleServiceTest {
     @Test
     void list_byRetailer_returnsPaginatedResults() {
         StbSale sale = saleWithId(100L);
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(saleRepository.findByTenantIdAndRetailerId(eq(1L), eq(5L), any()))
+        when(saleRepository.findByRetailerId(eq(5L), any()))
                 .thenReturn(new PageImpl<>(List.of(sale)));
 
         var result = boxSaleService.list(5L, PageRequest.of(0, 20));
@@ -175,24 +156,10 @@ class BoxSaleServiceTest {
         assertThat(result.getContent()).hasSize(1);
     }
 
-    @Test
-    void create_missingTenantContext_throwsBusinessException() {
-        TenantContext.clear();
-
-        var request = new CreateSaleRequest(5L, LocalDate.now(),
-                List.of(new CreateSaleRequest.SaleItemRequest(10L, BigDecimal.valueOf(1500))),
-                null, null);
-
-        assertThatThrownBy(() -> boxSaleService.create(request))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Tenant context");
-    }
-
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private StbAsset assetWithId(Long id) {
         StbAsset a = new StbAsset();
-        a.setTenantId(1L);
         a.setSerialNumber("SN00" + id);
         a.setStatus(AssetStatus.AVAILABLE);
         setId(a, id);
@@ -201,7 +168,6 @@ class BoxSaleServiceTest {
 
     private StbSale saleWithId(Long id) {
         StbSale s = new StbSale();
-        s.setTenantId(1L);
         s.setRetailer(retailer);
         s.setTransactionDate(LocalDate.now());
         s.setTotalAmount(BigDecimal.valueOf(1500));

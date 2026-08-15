@@ -19,6 +19,4 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
             ORDER BY e.createdAt ASC
             """)
     List<OutboxEvent> findDueForProcessing(@Param("now") Instant now);
-
-    List<OutboxEvent> findByTenantIdOrderByCreatedAtDesc(Long tenantId);
 }

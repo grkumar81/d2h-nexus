@@ -21,9 +21,6 @@ public class StbAssetHistory {
     @JoinColumn(name = "asset_id", nullable = false, updatable = false)
     private StbAsset asset;
 
-    @Column(name = "tenant_id", nullable = false, updatable = false)
-    private Long tenantId;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "from_status", length = 20)
     private AssetStatus fromStatus;
@@ -48,7 +45,6 @@ public class StbAssetHistory {
     public StbAssetHistory(StbAsset asset, AssetStatus fromStatus, AssetStatus toStatus,
                            Retailer retailer, String changedBy, String remarks) {
         this.asset = asset;
-        this.tenantId = asset.getTenantId();
         this.fromStatus = fromStatus;
         this.toStatus = toStatus;
         this.retailer = retailer;

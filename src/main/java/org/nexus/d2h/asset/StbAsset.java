@@ -15,9 +15,6 @@ import java.time.LocalDate;
 @Table(name = "stb_assets")
 public class StbAsset extends BaseEntity {
 
-    @Column(name = "tenant_id", nullable = false, updatable = false)
-    private Long tenantId;
-
     @Column(name = "serial_number", nullable = false, length = 100)
     private String serialNumber;
 

@@ -17,9 +17,6 @@ import java.util.List;
 @Table(name = "stb_sales")
 public class StbSale extends BaseEntity {
 
-    @Column(name = "tenant_id", nullable = false, updatable = false)
-    private Long tenantId;
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "retailer_id", nullable = false)
     private Retailer retailer;

@@ -7,13 +7,10 @@ import java.util.Optional;
 
 public interface NotificationConfigRepository extends JpaRepository<NotificationConfig, Long> {
 
-    List<NotificationConfig> findByTenantId(Long tenantId);
+    List<NotificationConfig> findAll();
 
-    Optional<NotificationConfig> findByTenantIdAndEventTypeAndChannel(
-            Long tenantId, NotificationEventType eventType, NotificationChannel channel);
+    Optional<NotificationConfig> findByEventTypeAndChannel(
+            NotificationEventType eventType, NotificationChannel channel);
 
-    List<NotificationConfig> findByTenantIdAndEventTypeAndEnabledTrue(
-            Long tenantId, NotificationEventType eventType);
-
-    Optional<NotificationConfig> findByIdAndTenantId(Long id, Long tenantId);
+    List<NotificationConfig> findByEventTypeAndEnabledTrue(NotificationEventType eventType);
 }

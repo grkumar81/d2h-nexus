@@ -87,7 +87,7 @@ public class RechargeUploadService {
                 try {
                     RowData rd = parseRow(row, idx, rowNum, tenant, seenRefs);
                     seenRefs.add(rd.reference());
-                    rechargeService.createFromUpload(tenant.getId(), rd.retailer(), rd.asset(),
+                    rechargeService.createFromUpload(rd.retailer(), rd.asset(),
                             rd.type(), rd.date(), rd.amount(), rd.paymentMethod(),
                             rd.reference(), rd.externalReference(), rd.paymentReference(),
                             rd.servicePeriod(), rd.description(), rd.remarks());
@@ -132,7 +132,7 @@ public class RechargeUploadService {
                 try {
                     RowData rd = parseExcelRow(row, idx, i + 1, tenant, seenRefs);
                     seenRefs.add(rd.reference());
-                    rechargeService.createFromUpload(tenant.getId(), rd.retailer(), rd.asset(),
+                    rechargeService.createFromUpload(rd.retailer(), rd.asset(),
                             rd.type(), rd.date(), rd.amount(), rd.paymentMethod(),
                             rd.reference(), rd.externalReference(), rd.paymentReference(),
                             rd.servicePeriod(), rd.description(), rd.remarks());
@@ -166,7 +166,7 @@ public class RechargeUploadService {
             payload.put("failureCount", failed);
             payload.put("duplicateCount", duplicates);
             payload.put("totalAmount", totalAmount.toPlainString());
-            eventPublisher.publish(tenant.getId(), NotificationEventType.RECHARGE_UPLOAD_COMPLETED,
+            eventPublisher.publish(NotificationEventType.RECHARGE_UPLOAD_COMPLETED,
                     "upload", payload);
         } catch (Exception e) {
             log.warn("Failed to publish recharge upload notification: {}", e.getMessage());
@@ -235,14 +235,14 @@ public class RechargeUploadService {
     // ── Validation helpers ────────────────────────────────────────────────────
 
     private Retailer findRetailer(Tenant tenant, String code, int rowNum) {
-        return retailerRepository.findByTenantIdAndRetailerCode(tenant.getId(), code.trim().toUpperCase())
+        return retailerRepository.findByRetailerCode(code.trim().toUpperCase())
                 .orElseThrow(() -> new BusinessException("INVALID_RETAILER",
                         "Row " + rowNum + ": Retailer not found: " + code));
     }
 
     private StbAsset findAsset(Tenant tenant, String serial, int rowNum) {
         if (serial == null || serial.isBlank()) return null;
-        return assetRepository.findByTenantIdAndSerialNumber(tenant.getId(), serial.trim())
+        return assetRepository.findBySerialNumber(serial.trim())
                 .orElseThrow(() -> new BusinessException("INVALID_ASSET",
                         "Row " + rowNum + ": Asset not found: " + serial));
     }

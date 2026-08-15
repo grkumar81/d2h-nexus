@@ -10,9 +10,6 @@ import org.nexus.d2h.notification.NotificationEventPublisher;
 import org.nexus.d2h.notification.NotificationEventType;
 import org.nexus.d2h.retailer.Retailer;
 import org.nexus.d2h.retailer.RetailerRepository;
-import org.nexus.d2h.tenant.Tenant;
-import org.nexus.d2h.tenant.TenantContext;
-import org.nexus.d2h.tenant.TenantRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,18 +25,15 @@ import java.util.UUID;
 public class FinanceService {
 
     private final FinancialTransactionRepository txRepository;
-    private final TenantRepository tenantRepository;
     private final RetailerRepository retailerRepository;
     private final NotificationEventPublisher eventPublisher;
     private final AuditService auditService;
 
     public FinanceService(FinancialTransactionRepository txRepository,
-                          TenantRepository tenantRepository,
                           RetailerRepository retailerRepository,
                           NotificationEventPublisher eventPublisher,
                           AuditService auditService) {
         this.txRepository = txRepository;
-        this.tenantRepository = tenantRepository;
         this.retailerRepository = retailerRepository;
         this.eventPublisher = eventPublisher;
         this.auditService = auditService;
@@ -49,55 +43,51 @@ public class FinanceService {
 
     @Transactional
     public FinancialTransactionDto create(CreateTransactionRequest request) {
-        Tenant tenant = resolveTenant();
-        Retailer retailer = findRetailerForTenant(request.retailerId(), tenant.getId());
+        Retailer retailer = retailerRepository.findById(request.retailerId())
+                .orElseThrow(() -> new ResourceNotFoundException("Retailer", request.retailerId()));
 
-        String ref = resolveReference(request.reference(), tenant.getId());
+        String ref = resolveReference(request.reference());
 
-        FinancialTransaction tx = buildTransaction(tenant.getId(), retailer, request.transactionType(),
+        FinancialTransaction tx = buildTransaction(retailer, request.transactionType(),
                 request.transactionDate(), request.amount(), request.paymentMethod(),
                 ref, request.paymentReference(), request.description(), request.remarks(),
                 TransactionSource.MANUAL, null);
 
         FinancialTransaction saved = txRepository.save(tx);
-        log.info("Finance tx created: id={} type={} amount={} retailer={} tenant={}",
+        log.info("Finance tx created: id={} type={} amount={} retailer={}",
                 saved.getId(), saved.getTransactionType(), saved.getAmount(),
-                retailer.getRetailerCode(), tenant.getTenantCode());
-        publishFinanceEvent(NotificationEventType.FINANCE_TRANSACTION_CREATED, saved, tenant.getId());
-        auditService.record(tenant.getId(), "FinancialTransaction", String.valueOf(saved.getId()),
+                retailer.getRetailerCode());
+        publishFinanceEvent(NotificationEventType.FINANCE_TRANSACTION_CREATED, saved);
+        auditService.record("FinancialTransaction", String.valueOf(saved.getId()),
                 "CREATE", "type=" + saved.getTransactionType() + " amount=" + saved.getAmount()
                         + " retailer=" + retailer.getRetailerCode(), null);
         return FinancialTransactionDto.from(saved);
     }
 
-    /**
-     * Called by BoxSaleService within the same transaction to record a BOX_SALE finance entry.
-     * Idempotent: if a finance record already exists for this saleId it is skipped.
-     */
     @Transactional
-    public void recordBoxSale(Long tenantId, Retailer retailer, StbSale sale) {
-        if (txRepository.existsByTenantIdAndSaleId(tenantId, sale.getId())) {
+    public void recordBoxSale(Retailer retailer, StbSale sale) {
+        if (txRepository.existsBySaleId(sale.getId())) {
             log.warn("Finance record for sale {} already exists — skipping", sale.getId());
             return;
         }
         String ref = "SALE-" + sale.getId();
-        if (txRepository.existsByTenantIdAndReference(tenantId, ref)) {
+        if (txRepository.existsByReference(ref)) {
             ref = "SALE-" + sale.getId() + "-" + UUID.randomUUID().toString().substring(0, 8);
         }
-        FinancialTransaction tx = buildTransaction(tenantId, retailer, TransactionType.BOX_SALE,
+        FinancialTransaction tx = buildTransaction(retailer, TransactionType.BOX_SALE,
                 sale.getTransactionDate(), sale.getTotalAmount(), null,
                 ref, null, "Box sale #" + sale.getId(), null,
                 TransactionSource.SYSTEM, sale);
         txRepository.save(tx);
-        log.info("BOX_SALE finance tx created for sale={} amount={} tenantId={}",
-                sale.getId(), sale.getTotalAmount(), tenantId);
+        log.info("BOX_SALE finance tx created for sale={} amount={}", sale.getId(), sale.getTotalAmount());
     }
 
     // ── Read ──────────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public FinancialTransactionDto getById(Long id) {
-        return FinancialTransactionDto.from(findForCurrentTenant(id));
+        return FinancialTransactionDto.from(txRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("FinancialTransaction", id)));
     }
 
     @Transactional(readOnly = true)
@@ -107,9 +97,8 @@ public class FinanceService {
             String reference, BigDecimal amountMin, BigDecimal amountMax,
             Pageable pageable) {
 
-        Long tenantId = resolveTenant().getId();
         Page<FinancialTransactionDto> page = txRepository.findAll(
-                FinancialTransactionSpecification.search(tenantId, retailerId, type, status,
+                FinancialTransactionSpecification.search(retailerId, type, status,
                         paymentMethod, dateFrom, dateTo, reference, amountMin, amountMax),
                 pageable).map(FinancialTransactionDto::from);
         return PageResponse.from(page);
@@ -119,17 +108,16 @@ public class FinanceService {
 
     @Transactional
     public FinancialTransactionDto reverse(Long id, String reason) {
-        FinancialTransaction original = findForCurrentTenant(id);
+        FinancialTransaction original = txRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("FinancialTransaction", id));
 
         if (original.getReversedBy() != null) {
-            throw new BusinessException("ALREADY_REVERSED",
-                    "Transaction has already been reversed");
+            throw new BusinessException("ALREADY_REVERSED", "Transaction has already been reversed");
         }
         if (original.getTransactionStatus() != TransactionStatus.POSTED) {
             throw new BusinessException("TRANSACTION_NOT_REVERSIBLE",
                     "Only POSTED transactions can be reversed");
         }
-        // Reversals themselves cannot be reversed
         if (original.getTransactionType() == TransactionType.REVERSAL) {
             throw new BusinessException("TRANSACTION_NOT_REVERSIBLE",
                     "A reversal transaction cannot be reversed");
@@ -139,17 +127,12 @@ public class FinanceService {
         String reversalRef = "REV-" + original.getId() + "-" + UUID.randomUUID().toString().substring(0, 8);
 
         FinancialTransaction reversal = buildTransaction(
-                original.getTenantId(), original.getRetailer(),
-                TransactionType.REVERSAL,
-                LocalDate.now(),
-                original.getAmount().negate(),
-                original.getPaymentMethod(),
-                reversalRef,
+                original.getRetailer(), TransactionType.REVERSAL,
+                LocalDate.now(), original.getAmount().negate(),
+                original.getPaymentMethod(), reversalRef,
                 original.getPaymentReference(),
                 "Reversal of transaction #" + original.getId() + (reason != null ? ": " + reason : ""),
-                reason,
-                TransactionSource.MANUAL,
-                null);
+                reason, TransactionSource.MANUAL, null);
         reversal.setReversalOf(original);
         FinancialTransaction savedReversal = txRepository.save(reversal);
 
@@ -159,8 +142,8 @@ public class FinanceService {
         txRepository.save(original);
 
         log.info("Transaction {} reversed by {} — reversal id={}", id, username, savedReversal.getId());
-        publishFinanceEvent(NotificationEventType.FINANCE_TRANSACTION_REVERSED, savedReversal, original.getTenantId());
-        auditService.record(original.getTenantId(), "FinancialTransaction", String.valueOf(id),
+        publishFinanceEvent(NotificationEventType.FINANCE_TRANSACTION_REVERSED, savedReversal);
+        auditService.record("FinancialTransaction", String.valueOf(id),
                 "REVERSE", "reversalId=" + savedReversal.getId(), null);
         return FinancialTransactionDto.from(savedReversal);
     }
@@ -169,7 +152,8 @@ public class FinanceService {
 
     @Transactional
     public FinancialTransactionDto adjust(Long id, AdjustTransactionRequest request) {
-        FinancialTransaction original = findForCurrentTenant(id);
+        FinancialTransaction original = txRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("FinancialTransaction", id));
 
         if (original.getTransactionStatus() != TransactionStatus.POSTED) {
             throw new BusinessException("TRANSACTION_NOT_ADJUSTABLE",
@@ -182,73 +166,59 @@ public class FinanceService {
         String adjustRef = "ADJ-" + original.getId() + "-" + UUID.randomUUID().toString().substring(0, 8);
 
         FinancialTransaction adjustment = buildTransaction(
-                original.getTenantId(), original.getRetailer(),
-                TransactionType.ADJUSTMENT,
-                LocalDate.now(),
-                request.adjustmentAmount(),
-                original.getPaymentMethod(),
-                adjustRef,
-                null,
+                original.getRetailer(), TransactionType.ADJUSTMENT,
+                LocalDate.now(), request.adjustmentAmount(),
+                original.getPaymentMethod(), adjustRef, null,
                 "Adjustment of transaction #" + original.getId() + ": " + request.reason(),
-                request.reason(),
-                TransactionSource.MANUAL,
-                null);
+                request.reason(), TransactionSource.MANUAL, null);
         adjustment.setReversalOf(original);
         FinancialTransaction saved = txRepository.save(adjustment);
 
         log.info("Adjustment {} created for transaction {} amount={}", saved.getId(), id, request.adjustmentAmount());
-        publishFinanceEvent(NotificationEventType.FINANCE_TRANSACTION_ADJUSTED, saved, original.getTenantId());
-        auditService.record(original.getTenantId(), "FinancialTransaction", String.valueOf(id),
+        publishFinanceEvent(NotificationEventType.FINANCE_TRANSACTION_ADJUSTED, saved);
+        auditService.record("FinancialTransaction", String.valueOf(id),
                 "ADJUST", "adjustmentId=" + saved.getId() + " amount=" + request.adjustmentAmount(), null);
         return FinancialTransactionDto.from(saved);
     }
 
-    // ── Financial calculations (centralized) ──────────────────────────────────
+    // ── Financial calculations ────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public RetailerFinanceSummaryDto getRetailerSummary(Long retailerId) {
-        Tenant tenant = resolveTenant();
-        Retailer retailer = findRetailerForTenant(retailerId, tenant.getId());
+        Retailer retailer = retailerRepository.findById(retailerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Retailer", retailerId));
 
-        BigDecimal totalBoxSales = txRepository.sumBoxSalesByRetailer(tenant.getId(), retailerId);
-        BigDecimal totalReceived = txRepository.sumPaymentsReceivedByRetailer(tenant.getId(), retailerId);
-        BigDecimal totalRecharge = txRepository.sumRechargeByRetailer(tenant.getId(), retailerId);
+        BigDecimal totalBoxSales = txRepository.sumBoxSalesByRetailer(retailerId);
+        BigDecimal totalReceived = txRepository.sumPaymentsReceivedByRetailer(retailerId);
+        BigDecimal totalRecharge = txRepository.sumRechargeByRetailer(retailerId);
         BigDecimal outstanding = totalBoxSales.subtract(totalReceived);
 
         return new RetailerFinanceSummaryDto(
-                retailer.getId(),
-                retailer.getRetailerCode(),
-                retailer.getRetailerName(),
-                totalBoxSales,
-                totalBoxSales,   // totalDue = totalBoxSales per business rule
-                totalReceived,
-                outstanding,
-                totalRecharge
-        );
+                retailer.getId(), retailer.getRetailerCode(), retailer.getRetailerName(),
+                totalBoxSales, totalBoxSales, totalReceived, outstanding, totalRecharge);
     }
 
     @Transactional(readOnly = true)
     public FinanceSummaryDto getTenantSummary() {
-        Long tenantId = resolveTenant().getId();
-        BigDecimal totalDue = txRepository.sumBoxSalesByTenant(tenantId);
-        BigDecimal totalReceived = txRepository.sumPaymentsReceivedByTenant(tenantId);
-        BigDecimal totalRecharge = txRepository.sumRechargeByTenant(tenantId);
-        long count = txRepository.countPostedByTenant(tenantId);
+        BigDecimal totalDue = txRepository.sumBoxSales();
+        BigDecimal totalReceived = txRepository.sumPaymentsReceived();
+        BigDecimal totalRecharge = txRepository.sumRecharge();
+        long count = txRepository.countPosted();
         return new FinanceSummaryDto(totalDue, totalReceived, totalDue.subtract(totalReceived), totalRecharge, count);
     }
 
     // ── Package-private: used by FinanceUploadService ─────────────────────────
 
     @Transactional
-    public FinancialTransaction createFromUpload(Long tenantId, Retailer retailer,
+    public FinancialTransaction createFromUpload(Retailer retailer,
                                                   TransactionType type, LocalDate date,
                                                   BigDecimal amount, PaymentMethod paymentMethod,
                                                   String reference, String paymentReference,
                                                   String description, String remarks) {
-        if (txRepository.existsByTenantIdAndReference(tenantId, reference)) {
+        if (txRepository.existsByReference(reference)) {
             throw new BusinessException("DUPLICATE_REFERENCE", "Duplicate reference: " + reference);
         }
-        FinancialTransaction tx = buildTransaction(tenantId, retailer, type, date, amount,
+        FinancialTransaction tx = buildTransaction(retailer, type, date, amount,
                 paymentMethod, reference, paymentReference, description, remarks,
                 TransactionSource.UPLOAD, null);
         return txRepository.save(tx);
@@ -256,12 +226,11 @@ public class FinanceService {
 
     // ── Notification helpers ───────────────────────────────────────────────────
 
-    private void publishFinanceEvent(NotificationEventType eventType,
-                                      FinancialTransaction tx, Long tenantId) {
+    private void publishFinanceEvent(NotificationEventType eventType, FinancialTransaction tx) {
         try {
-            BigDecimal totalDue = txRepository.sumBoxSalesByRetailer(tenantId, tx.getRetailer().getId());
-            BigDecimal totalReceived = txRepository.sumPaymentsReceivedByRetailer(tenantId, tx.getRetailer().getId());
-            BigDecimal totalRecharge = txRepository.sumRechargeByRetailer(tenantId, tx.getRetailer().getId());
+            BigDecimal totalDue = txRepository.sumBoxSalesByRetailer(tx.getRetailer().getId());
+            BigDecimal totalReceived = txRepository.sumPaymentsReceivedByRetailer(tx.getRetailer().getId());
+            BigDecimal totalRecharge = txRepository.sumRechargeByRetailer(tx.getRetailer().getId());
             java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
             payload.put("transactionId", tx.getId());
             payload.put("transactionType", tx.getTransactionType().name());
@@ -275,7 +244,7 @@ public class FinanceService {
             payload.put("totalReceived", totalReceived.toPlainString());
             payload.put("outstanding", totalDue.subtract(totalReceived).toPlainString());
             payload.put("totalRecharge", totalRecharge.toPlainString());
-            eventPublisher.publish(tenantId, eventType, String.valueOf(tx.getId()), payload);
+            eventPublisher.publish(eventType, String.valueOf(tx.getId()), payload);
         } catch (Exception e) {
             log.warn("Failed to publish notification event for tx={}: {}", tx.getId(), e.getMessage());
         }
@@ -283,51 +252,29 @@ public class FinanceService {
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
-    private FinancialTransaction findForCurrentTenant(Long id) {
-        Long tenantId = resolveTenant().getId();
-        return txRepository.findByIdAndTenantId(id, tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("FinancialTransaction", id));
-    }
-
-    private Tenant resolveTenant() {
-        String tenantCode = TenantContext.getCurrentTenant();
-        if (tenantCode == null || tenantCode.isBlank()) {
-            throw new BusinessException("TENANT_CONTEXT_MISSING", "Tenant context is not set");
-        }
-        return tenantRepository.findByTenantCode(tenantCode)
-                .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantCode));
-    }
-
-    private Retailer findRetailerForTenant(Long retailerId, Long tenantId) {
-        return retailerRepository.findByIdAndTenantId(retailerId, tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Retailer", retailerId));
-    }
-
     private String currentUsername() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         return auth != null ? auth.getName() : "system";
     }
 
-    private String resolveReference(String requested, Long tenantId) {
+    private String resolveReference(String requested) {
         if (requested != null && !requested.isBlank()) {
-            if (txRepository.existsByTenantIdAndReference(tenantId, requested.trim())) {
+            if (txRepository.existsByReference(requested.trim())) {
                 throw new BusinessException("DUPLICATE_REFERENCE",
                         "Reference '" + requested + "' already exists");
             }
             return requested.trim();
         }
-        // Auto-generate a unique reference for manual entries without one
         return "MAN-" + UUID.randomUUID().toString().substring(0, 12).toUpperCase();
     }
 
-    private FinancialTransaction buildTransaction(Long tenantId, Retailer retailer,
+    private FinancialTransaction buildTransaction(Retailer retailer,
                                                    TransactionType type, LocalDate date,
                                                    BigDecimal amount, PaymentMethod paymentMethod,
                                                    String reference, String paymentReference,
                                                    String description, String remarks,
                                                    TransactionSource source, StbSale sale) {
         FinancialTransaction tx = new FinancialTransaction();
-        tx.setTenantId(tenantId);
         tx.setRetailer(retailer);
         tx.setTransactionType(type);
         tx.setTransactionStatus(TransactionStatus.POSTED);

@@ -12,9 +12,6 @@ import org.nexus.d2h.notification.NotificationEventType;
 import org.nexus.d2h.retailer.Retailer;
 import org.nexus.d2h.retailer.RetailerRepository;
 import org.nexus.d2h.retailer.RetailerStatus;
-import org.nexus.d2h.tenant.Tenant;
-import org.nexus.d2h.tenant.TenantContext;
-import org.nexus.d2h.tenant.TenantRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -30,41 +27,35 @@ import java.util.UUID;
 public class RechargeService {
 
     private final RechargeTransactionRepository rechargeRepository;
-    private final TenantRepository tenantRepository;
     private final RetailerRepository retailerRepository;
     private final AssetRepository assetRepository;
     private final NotificationEventPublisher eventPublisher;
 
     public RechargeService(RechargeTransactionRepository rechargeRepository,
-                           TenantRepository tenantRepository,
                            RetailerRepository retailerRepository,
                            AssetRepository assetRepository,
                            NotificationEventPublisher eventPublisher) {
         this.rechargeRepository = rechargeRepository;
-        this.tenantRepository = tenantRepository;
         this.retailerRepository = retailerRepository;
         this.assetRepository = assetRepository;
         this.eventPublisher = eventPublisher;
     }
 
-    // ── Create ────────────────────────────────────────────────────────────────
-
     @Transactional
     public RechargeTransactionDto create(CreateRechargeRequest request) {
-        Tenant tenant = resolveTenant();
-        Retailer retailer = findRetailerForTenant(request.retailerId(), tenant.getId());
+        Retailer retailer = retailerRepository.findById(request.retailerId())
+                .orElseThrow(() -> new ResourceNotFoundException("Retailer", request.retailerId()));
         validateRetailerActive(retailer);
 
         StbAsset asset = null;
         if (request.assetId() != null) {
-            asset = assetRepository.findByIdAndTenantId(request.assetId(), tenant.getId())
+            asset = assetRepository.findById(request.assetId())
                     .orElseThrow(() -> new ResourceNotFoundException("StbAsset", request.assetId()));
         }
 
-        String ref = resolveReference(request.reference(), tenant.getId());
+        String ref = resolveReference(request.reference());
 
         RechargeTransaction tx = new RechargeTransaction();
-        tx.setTenantId(tenant.getId());
         tx.setRetailer(retailer);
         tx.setAsset(asset);
         tx.setReference(ref);
@@ -82,18 +73,16 @@ public class RechargeService {
         tx.setUpdatedBy(currentUsername());
 
         RechargeTransaction saved = rechargeRepository.save(tx);
-        log.info("Recharge created: id={} ref={} amount={} retailer={} tenant={}",
-                saved.getId(), saved.getReference(), saved.getAmount(),
-                retailer.getRetailerCode(), tenant.getTenantCode());
-        publishRechargeEvent(NotificationEventType.RECHARGE_CREATED, saved, tenant.getId());
+        log.info("Recharge created: id={} ref={} amount={} retailer={}",
+                saved.getId(), saved.getReference(), saved.getAmount(), retailer.getRetailerCode());
+        publishRechargeEvent(NotificationEventType.RECHARGE_CREATED, saved);
         return RechargeTransactionDto.from(saved);
     }
 
-    // ── Read ──────────────────────────────────────────────────────────────────
-
     @Transactional(readOnly = true)
     public RechargeTransactionDto getById(Long id) {
-        return RechargeTransactionDto.from(findForCurrentTenant(id));
+        return RechargeTransactionDto.from(rechargeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("RechargeTransaction", id)));
     }
 
     @Transactional(readOnly = true)
@@ -103,33 +92,29 @@ public class RechargeService {
             String reference, BigDecimal amountMin, BigDecimal amountMax,
             Pageable pageable) {
 
-        Long tenantId = resolveTenant().getId();
         Page<RechargeTransactionDto> page = rechargeRepository.findAll(
-                RechargeSpecification.search(tenantId, retailerId, type, status,
+                RechargeSpecification.search(retailerId, type, status,
                         paymentMethod, dateFrom, dateTo, reference, amountMin, amountMax),
                 pageable).map(RechargeTransactionDto::from);
         return PageResponse.from(page);
     }
 
-    // ── Reversal ──────────────────────────────────────────────────────────────
-
     @Transactional
     public RechargeTransactionDto reverse(Long id, String reason) {
-        RechargeTransaction original = findForCurrentTenant(id);
+        RechargeTransaction original = rechargeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("RechargeTransaction", id));
 
         if (original.getReversedBy() != null) {
             throw new BusinessException("ALREADY_REVERSED", "Recharge has already been reversed");
         }
         if (original.getRechargeStatus() != RechargeStatus.SUCCESS) {
-            throw new BusinessException("RECHARGE_NOT_REVERSIBLE",
-                    "Only SUCCESS recharges can be reversed");
+            throw new BusinessException("RECHARGE_NOT_REVERSIBLE", "Only SUCCESS recharges can be reversed");
         }
 
         String reversalRef = "REV-" + original.getId() + "-"
                 + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
         RechargeTransaction reversal = new RechargeTransaction();
-        reversal.setTenantId(original.getTenantId());
         reversal.setRetailer(original.getRetailer());
         reversal.setAsset(original.getAsset());
         reversal.setReference(reversalRef);
@@ -152,17 +137,15 @@ public class RechargeService {
         original.setUpdatedBy(currentUsername());
         rechargeRepository.save(original);
 
-        log.info("Recharge {} reversed by {} — reversal id={}",
-                id, currentUsername(), savedReversal.getId());
-        publishRechargeEvent(NotificationEventType.RECHARGE_REVERSED, savedReversal, original.getTenantId());
+        log.info("Recharge {} reversed by {} — reversal id={}", id, currentUsername(), savedReversal.getId());
+        publishRechargeEvent(NotificationEventType.RECHARGE_REVERSED, savedReversal);
         return RechargeTransactionDto.from(savedReversal);
     }
 
-    // ── Cancellation ──────────────────────────────────────────────────────────
-
     @Transactional
     public RechargeTransactionDto cancel(Long id, String reason) {
-        RechargeTransaction tx = findForCurrentTenant(id);
+        RechargeTransaction tx = rechargeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("RechargeTransaction", id));
 
         if (tx.getRechargeStatus() != RechargeStatus.PENDING
                 && tx.getRechargeStatus() != RechargeStatus.FAILED) {
@@ -173,54 +156,45 @@ public class RechargeService {
         tx.setRechargeStatus(RechargeStatus.CANCELLED);
         tx.setRemarks(reason);
         tx.setUpdatedBy(currentUsername());
-        RechargeTransaction saved = rechargeRepository.save(tx);
-        log.info("Recharge {} cancelled by {}", id, currentUsername());
-        return RechargeTransactionDto.from(saved);
+        return RechargeTransactionDto.from(rechargeRepository.save(tx));
     }
-
-    // ── Summary ───────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public RechargeSummaryDto getSummary(LocalDate dateFrom, LocalDate dateTo) {
-        Long tenantId = resolveTenant().getId();
-        BigDecimal success  = rechargeRepository.sumSuccessByTenant(tenantId, dateFrom, dateTo);
-        BigDecimal failed   = rechargeRepository.sumFailedByTenant(tenantId, dateFrom, dateTo);
-        BigDecimal reversed = rechargeRepository.sumReversedByTenant(tenantId, dateFrom, dateTo);
-        BigDecimal total    = rechargeRepository.sumTotalByTenant(tenantId, dateFrom, dateTo);
-        long count          = rechargeRepository.countByTenant(tenantId, dateFrom, dateTo);
+        BigDecimal success  = rechargeRepository.sumSuccess(dateFrom, dateTo);
+        BigDecimal failed   = rechargeRepository.sumFailed(dateFrom, dateTo);
+        BigDecimal reversed = rechargeRepository.sumReversed(dateFrom, dateTo);
+        BigDecimal total    = rechargeRepository.sumTotal(dateFrom, dateTo);
+        long count          = rechargeRepository.countAll(dateFrom, dateTo);
         return new RechargeSummaryDto(count, total, success, failed, reversed, dateFrom, dateTo);
     }
 
     @Transactional(readOnly = true)
     public RetailerRechargeSummaryDto getRetailerSummary(Long retailerId) {
-        Tenant tenant = resolveTenant();
-        Retailer retailer = findRetailerForTenant(retailerId, tenant.getId());
-        Long tid = tenant.getId();
+        Retailer retailer = retailerRepository.findById(retailerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Retailer", retailerId));
 
-        BigDecimal total   = rechargeRepository.sumTotalByRetailer(tid, retailerId);
-        BigDecimal success = rechargeRepository.sumSuccessByRetailer(tid, retailerId);
-        long count         = rechargeRepository.countByRetailer(tid, retailerId);
-        LocalDate lastDate = rechargeRepository.lastRechargeDateByRetailer(tid, retailerId);
-        BigDecimal lastAmt = rechargeRepository.lastRechargeAmountByRetailer(tid, retailerId);
+        BigDecimal total   = rechargeRepository.sumTotalByRetailer(retailerId);
+        BigDecimal success = rechargeRepository.sumSuccessByRetailer(retailerId);
+        long count         = rechargeRepository.countByRetailer(retailerId);
+        LocalDate lastDate = rechargeRepository.lastRechargeDateByRetailer(retailerId);
+        BigDecimal lastAmt = rechargeRepository.lastRechargeAmountByRetailer(retailerId);
 
         return new RetailerRechargeSummaryDto(
                 retailer.getId(), retailer.getRetailerCode(), retailer.getRetailerName(),
                 count, total, success, lastDate, lastAmt);
     }
 
-    // ── Package-private: used by RechargeUploadService ────────────────────────
-
     @Transactional
-    public RechargeTransaction createFromUpload(Long tenantId, Retailer retailer, StbAsset asset,
+    public RechargeTransaction createFromUpload(Retailer retailer, StbAsset asset,
                                                  RechargeType type, LocalDate date, BigDecimal amount,
                                                  PaymentMethod paymentMethod, String reference,
                                                  String externalReference, String paymentReference,
                                                  String servicePeriod, String description, String remarks) {
-        if (rechargeRepository.existsByTenantIdAndReference(tenantId, reference)) {
+        if (rechargeRepository.existsByReference(reference)) {
             throw new BusinessException("DUPLICATE_REFERENCE", "Duplicate reference: " + reference);
         }
         RechargeTransaction tx = new RechargeTransaction();
-        tx.setTenantId(tenantId);
         tx.setRetailer(retailer);
         tx.setAsset(asset);
         tx.setReference(reference);
@@ -239,10 +213,7 @@ public class RechargeService {
         return rechargeRepository.save(tx);
     }
 
-    // ── Notification helpers ───────────────────────────────────────────────────
-
-    private void publishRechargeEvent(NotificationEventType eventType,
-                                       RechargeTransaction tx, Long tenantId) {
+    private void publishRechargeEvent(NotificationEventType eventType, RechargeTransaction tx) {
         try {
             java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
             payload.put("rechargeId", tx.getId());
@@ -254,32 +225,21 @@ public class RechargeService {
             payload.put("retailerId", tx.getRetailer().getId());
             payload.put("retailerCode", tx.getRetailer().getRetailerCode());
             payload.put("retailerName", tx.getRetailer().getRetailerName());
-            eventPublisher.publish(tenantId, eventType, String.valueOf(tx.getId()), payload);
+            eventPublisher.publish(eventType, String.valueOf(tx.getId()), payload);
         } catch (Exception e) {
             log.warn("Failed to publish recharge notification event for tx={}: {}", tx.getId(), e.getMessage());
         }
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
-
-    private RechargeTransaction findForCurrentTenant(Long id) {
-        Long tenantId = resolveTenant().getId();
-        return rechargeRepository.findByIdAndTenantId(id, tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("RechargeTransaction", id));
-    }
-
-    private Tenant resolveTenant() {
-        String tenantCode = TenantContext.getCurrentTenant();
-        if (tenantCode == null || tenantCode.isBlank()) {
-            throw new BusinessException("TENANT_CONTEXT_MISSING", "Tenant context is not set");
+    private String resolveReference(String requested) {
+        if (requested != null && !requested.isBlank()) {
+            if (rechargeRepository.existsByReference(requested.trim())) {
+                throw new BusinessException("DUPLICATE_REFERENCE",
+                        "Reference '" + requested + "' already exists");
+            }
+            return requested.trim();
         }
-        return tenantRepository.findByTenantCode(tenantCode)
-                .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantCode));
-    }
-
-    private Retailer findRetailerForTenant(Long retailerId, Long tenantId) {
-        return retailerRepository.findByIdAndTenantId(retailerId, tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Retailer", retailerId));
+        return "RCH-" + UUID.randomUUID().toString().substring(0, 12).toUpperCase();
     }
 
     private void validateRetailerActive(Retailer retailer) {
@@ -287,17 +247,6 @@ public class RechargeService {
             throw new BusinessException("RETAILER_NOT_ACTIVE",
                     "Retailer '" + retailer.getRetailerCode() + "' is not active");
         }
-    }
-
-    private String resolveReference(String requested, Long tenantId) {
-        if (requested != null && !requested.isBlank()) {
-            if (rechargeRepository.existsByTenantIdAndReference(tenantId, requested.trim())) {
-                throw new BusinessException("DUPLICATE_REFERENCE",
-                        "Reference '" + requested + "' already exists");
-            }
-            return requested.trim();
-        }
-        return "RCH-" + UUID.randomUUID().toString().substring(0, 12).toUpperCase();
     }
 
     private String currentUsername() {

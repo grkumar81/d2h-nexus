@@ -12,108 +12,91 @@ import java.util.Optional;
 public interface RechargeTransactionRepository
         extends JpaRepository<RechargeTransaction, Long>, JpaSpecificationExecutor<RechargeTransaction> {
 
-    Optional<RechargeTransaction> findByIdAndTenantId(Long id, Long tenantId);
-
-    boolean existsByTenantIdAndReference(Long tenantId, String reference);
+    boolean existsByReference(String reference);
 
     @Query("""
             SELECT COALESCE(SUM(r.amount), 0)
             FROM RechargeTransaction r
-            WHERE r.tenantId = :tenantId
-              AND r.retailer.id = :retailerId
+            WHERE r.retailer.id = :retailerId
               AND r.rechargeStatus = org.nexus.d2h.recharge.RechargeStatus.SUCCESS
             """)
-    BigDecimal sumSuccessByRetailer(@Param("tenantId") Long tenantId, @Param("retailerId") Long retailerId);
+    BigDecimal sumSuccessByRetailer(@Param("retailerId") Long retailerId);
 
     @Query("""
             SELECT COALESCE(SUM(r.amount), 0)
             FROM RechargeTransaction r
-            WHERE r.tenantId = :tenantId
-              AND r.retailer.id = :retailerId
+            WHERE r.retailer.id = :retailerId
             """)
-    BigDecimal sumTotalByRetailer(@Param("tenantId") Long tenantId, @Param("retailerId") Long retailerId);
+    BigDecimal sumTotalByRetailer(@Param("retailerId") Long retailerId);
 
     @Query("""
             SELECT COUNT(r)
             FROM RechargeTransaction r
-            WHERE r.tenantId = :tenantId
-              AND r.retailer.id = :retailerId
+            WHERE r.retailer.id = :retailerId
             """)
-    long countByRetailer(@Param("tenantId") Long tenantId, @Param("retailerId") Long retailerId);
+    long countByRetailer(@Param("retailerId") Long retailerId);
 
     @Query("""
             SELECT MAX(r.rechargeDate)
             FROM RechargeTransaction r
-            WHERE r.tenantId = :tenantId
-              AND r.retailer.id = :retailerId
+            WHERE r.retailer.id = :retailerId
             """)
-    LocalDate lastRechargeDateByRetailer(@Param("tenantId") Long tenantId, @Param("retailerId") Long retailerId);
+    LocalDate lastRechargeDateByRetailer(@Param("retailerId") Long retailerId);
 
     @Query("""
             SELECT r.amount
             FROM RechargeTransaction r
-            WHERE r.tenantId = :tenantId
-              AND r.retailer.id = :retailerId
+            WHERE r.retailer.id = :retailerId
             ORDER BY r.rechargeDate DESC, r.id DESC
             LIMIT 1
             """)
-    BigDecimal lastRechargeAmountByRetailer(@Param("tenantId") Long tenantId, @Param("retailerId") Long retailerId);
+    BigDecimal lastRechargeAmountByRetailer(@Param("retailerId") Long retailerId);
 
     @Query("""
             SELECT COALESCE(SUM(r.amount), 0)
             FROM RechargeTransaction r
-            WHERE r.tenantId = :tenantId
-              AND r.rechargeStatus = org.nexus.d2h.recharge.RechargeStatus.SUCCESS
+            WHERE r.rechargeStatus = org.nexus.d2h.recharge.RechargeStatus.SUCCESS
               AND (:dateFrom IS NULL OR r.rechargeDate >= :dateFrom)
               AND (:dateTo   IS NULL OR r.rechargeDate <= :dateTo)
             """)
-    BigDecimal sumSuccessByTenant(@Param("tenantId") Long tenantId,
-                                  @Param("dateFrom") LocalDate dateFrom,
-                                  @Param("dateTo") LocalDate dateTo);
+    BigDecimal sumSuccess(@Param("dateFrom") LocalDate dateFrom,
+                          @Param("dateTo") LocalDate dateTo);
 
     @Query("""
             SELECT COALESCE(SUM(r.amount), 0)
             FROM RechargeTransaction r
-            WHERE r.tenantId = :tenantId
-              AND r.rechargeStatus = org.nexus.d2h.recharge.RechargeStatus.FAILED
+            WHERE r.rechargeStatus = org.nexus.d2h.recharge.RechargeStatus.FAILED
               AND (:dateFrom IS NULL OR r.rechargeDate >= :dateFrom)
               AND (:dateTo   IS NULL OR r.rechargeDate <= :dateTo)
             """)
-    BigDecimal sumFailedByTenant(@Param("tenantId") Long tenantId,
-                                 @Param("dateFrom") LocalDate dateFrom,
-                                 @Param("dateTo") LocalDate dateTo);
+    BigDecimal sumFailed(@Param("dateFrom") LocalDate dateFrom,
+                         @Param("dateTo") LocalDate dateTo);
 
     @Query("""
             SELECT COALESCE(SUM(r.amount), 0)
             FROM RechargeTransaction r
-            WHERE r.tenantId = :tenantId
-              AND r.rechargeStatus = org.nexus.d2h.recharge.RechargeStatus.REVERSED
+            WHERE r.rechargeStatus = org.nexus.d2h.recharge.RechargeStatus.REVERSED
               AND (:dateFrom IS NULL OR r.rechargeDate >= :dateFrom)
               AND (:dateTo   IS NULL OR r.rechargeDate <= :dateTo)
             """)
-    BigDecimal sumReversedByTenant(@Param("tenantId") Long tenantId,
-                                   @Param("dateFrom") LocalDate dateFrom,
-                                   @Param("dateTo") LocalDate dateTo);
+    BigDecimal sumReversed(@Param("dateFrom") LocalDate dateFrom,
+                           @Param("dateTo") LocalDate dateTo);
 
     @Query("""
             SELECT COALESCE(SUM(r.amount), 0)
             FROM RechargeTransaction r
-            WHERE r.tenantId = :tenantId
-              AND (:dateFrom IS NULL OR r.rechargeDate >= :dateFrom)
+            WHERE (:dateFrom IS NULL OR r.rechargeDate >= :dateFrom)
               AND (:dateTo   IS NULL OR r.rechargeDate <= :dateTo)
             """)
-    BigDecimal sumTotalByTenant(@Param("tenantId") Long tenantId,
-                                @Param("dateFrom") LocalDate dateFrom,
-                                @Param("dateTo") LocalDate dateTo);
+    BigDecimal sumTotal(@Param("dateFrom") LocalDate dateFrom,
+                        @Param("dateTo") LocalDate dateTo);
 
     @Query("""
             SELECT COUNT(r)
             FROM RechargeTransaction r
-            WHERE r.tenantId = :tenantId
-              AND (:dateFrom IS NULL OR r.rechargeDate >= :dateFrom)
+            WHERE (:dateFrom IS NULL OR r.rechargeDate >= :dateFrom)
               AND (:dateTo   IS NULL OR r.rechargeDate <= :dateTo)
             """)
-    long countByTenant(@Param("tenantId") Long tenantId,
-                       @Param("dateFrom") LocalDate dateFrom,
-                       @Param("dateTo") LocalDate dateTo);
+    long countAll(@Param("dateFrom") LocalDate dateFrom,
+                  @Param("dateTo") LocalDate dateTo);
 }

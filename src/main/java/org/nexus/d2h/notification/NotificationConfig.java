@@ -16,9 +16,6 @@ public class NotificationConfig {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "tenant_id", nullable = false, updatable = false)
-    private Long tenantId;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "event_type", nullable = false, length = 100)
     private NotificationEventType eventType;

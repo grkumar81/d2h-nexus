@@ -92,7 +92,7 @@ public class RetailerUploadService {
                         errors.add(new UploadResult.RowError(rowNum, rowData, "Duplicate retailer code in file: " + code));
                         continue;
                     }
-                    if (retailerRepository.existsByTenantIdAndRetailerCode(tenant.getId(), code)) {
+                    if (retailerRepository.existsByRetailerCode(code)) {
                         counters[2]++;
                         errors.add(new UploadResult.RowError(rowNum, rowData, "Retailer code already exists: " + code));
                         continue;
@@ -158,7 +158,7 @@ public class RetailerUploadService {
                         errors.add(new UploadResult.RowError(i + 1, rowData, "Duplicate retailer code in file: " + code));
                         continue;
                     }
-                    if (retailerRepository.existsByTenantIdAndRetailerCode(tenant.getId(), code)) {
+                    if (retailerRepository.existsByRetailerCode(code)) {
                         counters[2]++;
                         errors.add(new UploadResult.RowError(i + 1, rowData, "Retailer code already exists: " + code));
                         continue;
@@ -202,7 +202,6 @@ public class RetailerUploadService {
         if (!mobile.matches("^[0-9]{10}$")) throw new BusinessException("VALIDATION_ERROR", "Invalid mobile: " + mobile);
 
         Retailer r = new Retailer();
-        r.setTenantId(tenant.getId());
         r.setRetailerCode(code);
         r.setRetailerName(name);
         r.setMobile(mobile);
@@ -230,7 +229,6 @@ public class RetailerUploadService {
         if (!mobile.matches("^[0-9]{10}$")) throw new BusinessException("VALIDATION_ERROR", "Invalid mobile: " + mobile);
 
         Retailer r = new Retailer();
-        r.setTenantId(tenant.getId());
         r.setRetailerCode(code);
         r.setRetailerName(name);
         r.setMobile(mobile);

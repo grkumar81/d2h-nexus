@@ -14,9 +14,6 @@ public class AuditLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "tenant_id", nullable = false)
-    private Long tenantId;
-
     @Column(name = "entity_type", nullable = false, length = 100)
     private String entityType;
 
@@ -40,9 +37,8 @@ public class AuditLog {
 
     protected AuditLog() {}
 
-    public AuditLog(Long tenantId, String entityType, String entityId,
+    public AuditLog(String entityType, String entityId,
                     String action, String performedBy, String details, String ipAddress) {
-        this.tenantId = tenantId;
         this.entityType = entityType;
         this.entityId = entityId;
         this.action = action;

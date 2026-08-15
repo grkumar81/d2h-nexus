@@ -9,9 +9,6 @@ import org.nexus.d2h.common.ResourceNotFoundException;
 import org.nexus.d2h.finance.FinanceService;
 import org.nexus.d2h.retailer.Retailer;
 import org.nexus.d2h.retailer.RetailerRepository;
-import org.nexus.d2h.tenant.Tenant;
-import org.nexus.d2h.tenant.TenantContext;
-import org.nexus.d2h.tenant.TenantRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -29,28 +25,24 @@ public class BoxSaleService {
 
     private final SaleRepository saleRepository;
     private final AssetService assetService;
-    private final TenantRepository tenantRepository;
     private final RetailerRepository retailerRepository;
     private final FinanceService financeService;
 
     public BoxSaleService(SaleRepository saleRepository,
                           AssetService assetService,
-                          TenantRepository tenantRepository,
                           RetailerRepository retailerRepository,
                           FinanceService financeService) {
         this.saleRepository = saleRepository;
         this.assetService = assetService;
-        this.tenantRepository = tenantRepository;
         this.retailerRepository = retailerRepository;
         this.financeService = financeService;
     }
 
     @Transactional
     public SaleDto create(CreateSaleRequest request) {
-        Tenant tenant = resolveTenant();
-        Retailer retailer = findRetailerForTenant(request.retailerId(), tenant.getId());
+        Retailer retailer = retailerRepository.findById(request.retailerId())
+                .orElseThrow(() -> new ResourceNotFoundException("Retailer", request.retailerId()));
 
-        // Guard: no duplicate asset IDs in the same sale request
         Set<Long> seen = new HashSet<>();
         for (var item : request.items()) {
             if (!seen.add(item.assetId())) {
@@ -61,7 +53,6 @@ public class BoxSaleService {
 
         String username = currentUsername();
         StbSale sale = new StbSale();
-        sale.setTenantId(tenant.getId());
         sale.setRetailer(retailer);
         sale.setTransactionDate(request.transactionDate());
         sale.setPaymentStatus(PaymentStatus.PENDING);
@@ -70,9 +61,7 @@ public class BoxSaleService {
 
         BigDecimal total = BigDecimal.ZERO;
         for (var itemReq : request.items()) {
-            // markSold validates status and transitions asset — throws if not saleable
-            StbAsset asset = assetService.markSold(
-                    itemReq.assetId(), tenant.getId(), request.transactionDate(), username);
+            StbAsset asset = assetService.markSold(itemReq.assetId(), request.transactionDate(), username);
             StbSaleItem item = new StbSaleItem(sale, asset, itemReq.unitPrice());
             sale.getItems().add(item);
             total = total.add(itemReq.unitPrice());
@@ -80,46 +69,25 @@ public class BoxSaleService {
         sale.setTotalAmount(total);
 
         StbSale saved = saleRepository.save(sale);
-        // Record BOX_SALE finance transaction in the same atomic operation
-        financeService.recordBoxSale(tenant.getId(), retailer, saved);
-        log.info("Box sale created: id={} retailer={} items={} total={} tenant={}",
-                saved.getId(), retailer.getRetailerCode(),
-                request.items().size(), total, tenant.getTenantCode());
+        financeService.recordBoxSale(retailer, saved);
+        log.info("Box sale created: id={} retailer={} items={} total={}",
+                saved.getId(), retailer.getRetailerCode(), request.items().size(), total);
         return SaleDto.from(saved);
     }
 
     @Transactional(readOnly = true)
     public SaleDto getById(Long id) {
-        Long tenantId = resolveTenant().getId();
-        StbSale sale = saleRepository.findByIdAndTenantId(id, tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Sale", id));
-        return SaleDto.from(sale);
+        return SaleDto.from(saleRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Sale", id)));
     }
 
     @Transactional(readOnly = true)
     public PageResponse<SaleDto> list(Long retailerId, Pageable pageable) {
-        Long tenantId = resolveTenant().getId();
         Page<SaleDto> page = (retailerId != null
-                ? saleRepository.findByTenantIdAndRetailerId(tenantId, retailerId, pageable)
-                : saleRepository.findByTenantId(tenantId, pageable))
+                ? saleRepository.findByRetailerId(retailerId, pageable)
+                : saleRepository.findAll(pageable))
                 .map(SaleDto::from);
         return PageResponse.from(page);
-    }
-
-    // ── private helpers ───────────────────────────────────────────────────────
-
-    private Tenant resolveTenant() {
-        String tenantCode = TenantContext.getCurrentTenant();
-        if (tenantCode == null || tenantCode.isBlank()) {
-            throw new BusinessException("TENANT_CONTEXT_MISSING", "Tenant context is not set");
-        }
-        return tenantRepository.findByTenantCode(tenantCode)
-                .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantCode));
-    }
-
-    private Retailer findRetailerForTenant(Long retailerId, Long tenantId) {
-        return retailerRepository.findByIdAndTenantId(retailerId, tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Retailer", retailerId));
     }
 
     private String currentUsername() {

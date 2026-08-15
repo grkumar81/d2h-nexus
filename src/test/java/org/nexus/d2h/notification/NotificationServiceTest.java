@@ -6,11 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.nexus.d2h.common.BusinessException;
 import org.nexus.d2h.common.ResourceNotFoundException;
-import org.nexus.d2h.tenant.Tenant;
-import org.nexus.d2h.tenant.TenantContext;
-import org.nexus.d2h.tenant.TenantRepository;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -28,35 +24,24 @@ class NotificationServiceTest {
 
     @Mock NotificationConfigRepository configRepository;
     @Mock NotificationDeliveryRepository deliveryRepository;
-    @Mock TenantRepository tenantRepository;
     @InjectMocks NotificationService notificationService;
-
-    private Tenant tenant;
 
     @BeforeEach
     void setUp() {
-        tenant = new Tenant();
-        tenant.setTenantCode("T1");
-        setId(tenant, 1L);
-        TenantContext.setCurrentTenant("T1");
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("admin", null, List.of()));
     }
 
     @BeforeEach
     void tearDown() {
-        TenantContext.clear();
         SecurityContextHolder.clearContext();
     }
 
-    // ── listConfigs ───────────────────────────────────────────────────────────
-
     @Test
-    void listConfigs_returnsTenantConfigs() {
+    void listConfigs_returnsAllConfigs() {
         NotificationConfig config = configWithId(10L, NotificationEventType.FINANCE_TRANSACTION_CREATED,
                 NotificationChannel.EMAIL);
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(configRepository.findByTenantId(1L)).thenReturn(List.of(config));
+        when(configRepository.findAll()).thenReturn(List.of(config));
 
         List<NotificationConfigDto> result = notificationService.listConfigs();
 
@@ -66,19 +51,8 @@ class NotificationServiceTest {
     }
 
     @Test
-    void listConfigs_noTenantContext_throwsBusinessException() {
-        TenantContext.clear();
-        assertThatThrownBy(() -> notificationService.listConfigs())
-                .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", "TENANT_CONTEXT_MISSING");
-    }
-
-    // ── saveConfig ────────────────────────────────────────────────────────────
-
-    @Test
     void saveConfig_createsNewConfig() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(configRepository.findByTenantIdAndEventTypeAndChannel(1L,
+        when(configRepository.findByEventTypeAndChannel(
                 NotificationEventType.FINANCE_TRANSACTION_CREATED, NotificationChannel.EMAIL))
                 .thenReturn(Optional.empty());
         when(configRepository.save(any())).thenAnswer(inv -> {
@@ -102,8 +76,7 @@ class NotificationServiceTest {
         existing.setEnabled(false);
         existing.setRecipients("old@example.com");
 
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(configRepository.findByTenantIdAndEventTypeAndChannel(1L,
+        when(configRepository.findByEventTypeAndChannel(
                 NotificationEventType.FINANCE_TRANSACTION_CREATED, NotificationChannel.EMAIL))
                 .thenReturn(Optional.of(existing));
         when(configRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -116,14 +89,11 @@ class NotificationServiceTest {
         assertThat(dto.recipients()).isEqualTo("new@example.com");
     }
 
-    // ── deleteConfig ──────────────────────────────────────────────────────────
-
     @Test
     void deleteConfig_existingConfig_deletes() {
         NotificationConfig config = configWithId(10L, NotificationEventType.FINANCE_TRANSACTION_CREATED,
                 NotificationChannel.EMAIL);
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(configRepository.findByIdAndTenantId(10L, 1L)).thenReturn(Optional.of(config));
+        when(configRepository.findById(10L)).thenReturn(Optional.of(config));
 
         notificationService.deleteConfig(10L);
 
@@ -132,30 +102,16 @@ class NotificationServiceTest {
 
     @Test
     void deleteConfig_notFound_throwsResourceNotFoundException() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(configRepository.findByIdAndTenantId(99L, 1L)).thenReturn(Optional.empty());
+        when(configRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> notificationService.deleteConfig(99L))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
-    void deleteConfig_tenantIsolation_cannotDeleteOtherTenantConfig() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        // findByIdAndTenantId scopes to tenant — returns empty for cross-tenant access
-        when(configRepository.findByIdAndTenantId(50L, 1L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> notificationService.deleteConfig(50L))
-                .isInstanceOf(ResourceNotFoundException.class);
-    }
-
-    // ── listDeliveries ────────────────────────────────────────────────────────
-
-    @Test
     void listDeliveries_returnsPaginatedResults() {
         NotificationDelivery delivery = deliveryWithId(1L);
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(deliveryRepository.findByTenantIdOrderByCreatedAtDesc(eq(1L), any()))
+        when(deliveryRepository.findAllByOrderByCreatedAtDesc(any()))
                 .thenReturn(new PageImpl<>(List.of(delivery)));
 
         var result = notificationService.listDeliveries(PageRequest.of(0, 20));
@@ -168,7 +124,6 @@ class NotificationServiceTest {
     private NotificationConfig configWithId(Long id, NotificationEventType eventType,
                                              NotificationChannel channel) {
         NotificationConfig c = new NotificationConfig();
-        c.setTenantId(1L);
         c.setEventType(eventType);
         c.setChannel(channel);
         c.setEnabled(true);
@@ -179,14 +134,12 @@ class NotificationServiceTest {
 
     private NotificationDelivery deliveryWithId(Long id) {
         OutboxEvent event = new OutboxEvent();
-        event.setTenantId(1L);
         event.setEventType(NotificationEventType.FINANCE_TRANSACTION_CREATED.name());
         event.setAggregateId("1");
         event.setPayload("{}");
         setId(event, 100L);
 
         NotificationDelivery d = new NotificationDelivery();
-        d.setTenantId(1L);
         d.setOutboxEvent(event);
         d.setChannel(NotificationChannel.EMAIL);
         d.setRecipient("test@example.com");

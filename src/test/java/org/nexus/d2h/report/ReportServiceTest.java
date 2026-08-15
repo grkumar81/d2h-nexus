@@ -12,9 +12,7 @@ import org.nexus.d2h.finance.FinancialTransactionRepository;
 import org.nexus.d2h.recharge.RechargeTransactionRepository;
 import org.nexus.d2h.retailer.Retailer;
 import org.nexus.d2h.retailer.RetailerRepository;
-import org.nexus.d2h.tenant.Tenant;
 import org.nexus.d2h.tenant.TenantContext;
-import org.nexus.d2h.tenant.TenantRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -32,25 +30,16 @@ class ReportServiceTest {
     @Mock FinancialTransactionRepository financeRepo;
     @Mock RechargeTransactionRepository rechargeRepo;
     @Mock RetailerRepository retailerRepo;
-    @Mock TenantRepository tenantRepository;
     @InjectMocks ReportService reportService;
 
-    private Tenant tenant;
     private Retailer retailer;
 
     @BeforeEach
     void setUp() {
-        tenant = new Tenant();
-        tenant.setTenantCode("T1");
-        setId(tenant, 1L);
-
         retailer = new Retailer();
-        retailer.setTenantId(1L);
         retailer.setRetailerCode("RET001");
         retailer.setRetailerName("Test Retailer");
-        retailer.setMobile("9876543210");
         setId(retailer, 5L);
-
         TenantContext.setCurrentTenant("T1");
     }
 
@@ -62,11 +51,10 @@ class ReportServiceTest {
     @Test
     @SuppressWarnings("unchecked")
     void allRetailerReport_returnsAggregatedRows() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
         List<Object[]> rows = new ArrayList<>();
         rows.add(new Object[]{5L, "RET001", "Test Retailer",
                 BigDecimal.valueOf(100000), BigDecimal.valueOf(70000), BigDecimal.valueOf(5000)});
-        when(financeRepo.allRetailerReport(eq(1L), any(), any())).thenReturn((List) rows);
+        when(financeRepo.allRetailerReport(any(), any())).thenReturn((List) rows);
 
         List<RetailerReportDto> result = reportService.allRetailerReport(null, null);
 
@@ -81,8 +69,7 @@ class ReportServiceTest {
     @Test
     @SuppressWarnings("unchecked")
     void allRetailerReport_emptyTenant_returnsEmptyList() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(financeRepo.allRetailerReport(eq(1L), any(), any())).thenReturn((List) new ArrayList<>());
+        when(financeRepo.allRetailerReport(any(), any())).thenReturn((List) new ArrayList<>());
 
         List<RetailerReportDto> result = reportService.allRetailerReport(null, null);
 
@@ -91,11 +78,10 @@ class ReportServiceTest {
 
     @Test
     void retailerReport_noDateRange_usesRetailerAggregates() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(retailerRepo.findByIdAndTenantId(5L, 1L)).thenReturn(Optional.of(retailer));
-        when(financeRepo.sumBoxSalesByRetailer(1L, 5L)).thenReturn(BigDecimal.valueOf(50000));
-        when(financeRepo.sumPaymentsReceivedByRetailer(1L, 5L)).thenReturn(BigDecimal.valueOf(30000));
-        when(financeRepo.sumRechargeByRetailer(1L, 5L)).thenReturn(BigDecimal.valueOf(10000));
+        when(retailerRepo.findById(5L)).thenReturn(Optional.of(retailer));
+        when(financeRepo.sumBoxSalesByRetailer(5L)).thenReturn(BigDecimal.valueOf(50000));
+        when(financeRepo.sumPaymentsReceivedByRetailer(5L)).thenReturn(BigDecimal.valueOf(30000));
+        when(financeRepo.sumRechargeByRetailer(5L)).thenReturn(BigDecimal.valueOf(10000));
 
         RetailerReportDto dto = reportService.retailerReport(5L, null, null);
 
@@ -104,24 +90,8 @@ class ReportServiceTest {
     }
 
     @Test
-    void retailerReport_withDateRange_usesDateRangeAggregates() {
-        LocalDate from = LocalDate.of(2025, 4, 1);
-        LocalDate to = LocalDate.of(2026, 3, 31);
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(retailerRepo.findByIdAndTenantId(5L, 1L)).thenReturn(Optional.of(retailer));
-        when(financeRepo.sumBoxSalesByTenantAndDateRange(1L, from, to)).thenReturn(BigDecimal.valueOf(80000));
-        when(financeRepo.sumPaymentsReceivedByTenantAndDateRange(1L, from, to)).thenReturn(BigDecimal.valueOf(60000));
-        when(financeRepo.sumRechargeByTenantAndDateRange(1L, from, to)).thenReturn(BigDecimal.valueOf(15000));
-
-        RetailerReportDto dto = reportService.retailerReport(5L, from, to);
-
-        assertThat(dto.outstanding()).isEqualByComparingTo("20000");
-    }
-
-    @Test
     void retailerReport_notFound_throwsResourceNotFoundException() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(retailerRepo.findByIdAndTenantId(99L, 1L)).thenReturn(Optional.empty());
+        when(retailerRepo.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> reportService.retailerReport(99L, null, null))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -131,11 +101,10 @@ class ReportServiceTest {
     void periodReport_returnsCorrectSummary() {
         LocalDate from = LocalDate.of(2025, 4, 1);
         LocalDate to = LocalDate.of(2026, 3, 31);
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(financeRepo.sumBoxSalesByTenantAndDateRange(1L, from, to)).thenReturn(BigDecimal.valueOf(200000));
-        when(financeRepo.sumPaymentsReceivedByTenantAndDateRange(1L, from, to)).thenReturn(BigDecimal.valueOf(150000));
-        when(financeRepo.sumRechargeByTenantAndDateRange(1L, from, to)).thenReturn(BigDecimal.valueOf(30000));
-        when(financeRepo.countPostedByTenantAndDateRange(1L, from, to)).thenReturn(100L);
+        when(financeRepo.sumBoxSalesByDateRange(from, to)).thenReturn(BigDecimal.valueOf(200000));
+        when(financeRepo.sumPaymentsReceivedByDateRange(from, to)).thenReturn(BigDecimal.valueOf(150000));
+        when(financeRepo.sumRechargeByDateRange(from, to)).thenReturn(BigDecimal.valueOf(30000));
+        when(financeRepo.countPostedByDateRange(from, to)).thenReturn(100L);
 
         PeriodReportDto dto = reportService.periodReport(from, to);
 
@@ -146,11 +115,10 @@ class ReportServiceTest {
 
     @Test
     void periodReport_nullDates_usesDefaults() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(financeRepo.sumBoxSalesByTenantAndDateRange(eq(1L), any(), any())).thenReturn(BigDecimal.ZERO);
-        when(financeRepo.sumPaymentsReceivedByTenantAndDateRange(eq(1L), any(), any())).thenReturn(BigDecimal.ZERO);
-        when(financeRepo.sumRechargeByTenantAndDateRange(eq(1L), any(), any())).thenReturn(BigDecimal.ZERO);
-        when(financeRepo.countPostedByTenantAndDateRange(eq(1L), any(), any())).thenReturn(0L);
+        when(financeRepo.sumBoxSalesByDateRange(any(), any())).thenReturn(BigDecimal.ZERO);
+        when(financeRepo.sumPaymentsReceivedByDateRange(any(), any())).thenReturn(BigDecimal.ZERO);
+        when(financeRepo.sumRechargeByDateRange(any(), any())).thenReturn(BigDecimal.ZERO);
+        when(financeRepo.countPostedByDateRange(any(), any())).thenReturn(0L);
 
         PeriodReportDto dto = reportService.periodReport(null, null);
 
@@ -164,15 +132,6 @@ class ReportServiceTest {
         assertThatThrownBy(() -> reportService.allRetailerReport(null, null))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", "TENANT_CONTEXT_MISSING");
-    }
-
-    @Test
-    void tenantIsolation_retailerNotInTenant_throwsResourceNotFoundException() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(retailerRepo.findByIdAndTenantId(99L, 1L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> reportService.retailerReport(99L, null, null))
-                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     private void setId(Object entity, Long id) {

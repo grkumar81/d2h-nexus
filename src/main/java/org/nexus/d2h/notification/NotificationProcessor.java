@@ -63,10 +63,9 @@ public class NotificationProcessor {
         }
 
         Map<String, Object> payload = templateService.parsePayload(event.getPayload());
-        Long tenantId = event.getTenantId();
 
         List<NotificationConfig> configs =
-                configRepository.findByTenantIdAndEventTypeAndEnabledTrue(tenantId, eventType);
+                configRepository.findByEventTypeAndEnabledTrue(eventType);
 
         if (configs.isEmpty()) {
             // No configuration — mark processed silently
@@ -143,7 +142,6 @@ public class NotificationProcessor {
                 .findFirst()
                 .orElseGet(() -> {
                     NotificationDelivery d = new NotificationDelivery();
-                    d.setTenantId(event.getTenantId());
                     d.setOutboxEvent(event);
                     d.setChannel(channel);
                     d.setRecipient(recipient);

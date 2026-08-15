@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AssetHistoryRepository extends JpaRepository<StbAssetHistory, Long> {
 
-    Page<StbAssetHistory> findByAssetIdAndTenantIdOrderByChangedAtDesc(Long assetId, Long tenantId, Pageable pageable);
+    Page<StbAssetHistory> findByAssetIdOrderByChangedAtDesc(Long assetId, Pageable pageable);
 }

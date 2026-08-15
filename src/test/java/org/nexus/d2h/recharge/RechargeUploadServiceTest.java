@@ -10,6 +10,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.nexus.d2h.asset.AssetRepository;
 import org.nexus.d2h.common.BusinessException;
+import org.nexus.d2h.notification.NotificationEventPublisher;
 import org.nexus.d2h.retailer.Retailer;
 import org.nexus.d2h.retailer.RetailerRepository;
 import org.nexus.d2h.retailer.RetailerStatus;
@@ -22,7 +23,6 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
@@ -39,19 +39,18 @@ class RechargeUploadServiceTest {
     @Mock RetailerRepository retailerRepository;
     @Mock AssetRepository assetRepository;
     @Mock TenantRepository tenantRepository;
+    @Mock NotificationEventPublisher eventPublisher;
     @InjectMocks RechargeUploadService rechargeUploadService;
 
-    private Tenant tenant;
     private Retailer retailer;
 
     @BeforeEach
     void setUp() {
-        tenant = new Tenant();
+        Tenant tenant = new Tenant();
         tenant.setTenantCode("T1");
         setId(tenant, 1L);
 
         retailer = new Retailer();
-        retailer.setTenantId(1L);
         retailer.setRetailerCode("RET001");
         retailer.setRetailerName("Test Retailer");
         retailer.setMobile("9876543210");
@@ -63,12 +62,12 @@ class RechargeUploadServiceTest {
                 new UsernamePasswordAuthenticationToken("user", null, List.of()));
 
         when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(retailerRepository.findByTenantIdAndRetailerCode(1L, "RET001")).thenReturn(Optional.of(retailer));
-        when(rechargeService.createFromUpload(any(Long.class), any(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any(), any()))
+        when(retailerRepository.findByRetailerCode("RET001")).thenReturn(Optional.of(retailer));
+        when(rechargeService.createFromUpload(any(), any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any()))
                 .thenAnswer(inv -> {
                     RechargeTransaction tx = new RechargeTransaction();
-                    tx.setAmount(inv.getArgument(5));
+                    tx.setAmount(inv.getArgument(4));
                     return tx;
                 });
     }
@@ -109,8 +108,8 @@ class RechargeUploadServiceTest {
 
     @Test
     void upload_duplicateReferenceInDb_countedAsDuplicate() {
-        when(rechargeService.createFromUpload(any(Long.class), any(), any(), any(), any(), any(),
-                any(), eq("RCH001"), any(), any(), any(), any(), any()))
+        when(rechargeService.createFromUpload(any(), any(), any(), any(), any(), any(),
+                eq("RCH001"), any(), any(), any(), any(), any()))
                 .thenThrow(new BusinessException("DUPLICATE_REFERENCE", "Duplicate reference: RCH001"));
 
         String csv = "retailer_code,recharge_date,amount,recharge_type,reference\n" +
@@ -124,7 +123,7 @@ class RechargeUploadServiceTest {
 
     @Test
     void upload_invalidRetailerCode_rowFails() {
-        when(retailerRepository.findByTenantIdAndRetailerCode(1L, "BADCODE")).thenReturn(Optional.empty());
+        when(retailerRepository.findByRetailerCode("BADCODE")).thenReturn(Optional.empty());
 
         String csv = "retailer_code,recharge_date,amount,recharge_type,reference\n" +
                      "BADCODE,2026-01-15,1000.00,REGULAR,RCH001\n";
@@ -158,8 +157,7 @@ class RechargeUploadServiceTest {
 
     @Test
     void upload_missingRequiredHeader_throwsBusinessException() {
-        String csv = "retailer_code,recharge_date,amount\n" +
-                     "RET001,2026-01-15,1000.00\n";
+        String csv = "retailer_code,recharge_date,amount\nRET001,2026-01-15,1000.00\n";
 
         assertThatThrownBy(() -> rechargeUploadService.upload(csvFile(csv)))
                 .isInstanceOf(BusinessException.class)
@@ -177,7 +175,7 @@ class RechargeUploadServiceTest {
 
     @Test
     void upload_partialFailure_successAndFailureCounted() {
-        when(retailerRepository.findByTenantIdAndRetailerCode(1L, "BADCODE")).thenReturn(Optional.empty());
+        when(retailerRepository.findByRetailerCode("BADCODE")).thenReturn(Optional.empty());
 
         String csv = "retailer_code,recharge_date,amount,recharge_type,reference\n" +
                      "RET001,2026-01-15,1000.00,REGULAR,RCH001\n" +
@@ -189,8 +187,6 @@ class RechargeUploadServiceTest {
         assertThat(result.successRecords()).isEqualTo(1);
         assertThat(result.failedRecords()).isEqualTo(1);
     }
-
-    // ── helpers ───────────────────────────────────────────────────────────────
 
     private MockMultipartFile csvFile(String content) {
         return new MockMultipartFile("file", "recharge.csv", "text/csv",

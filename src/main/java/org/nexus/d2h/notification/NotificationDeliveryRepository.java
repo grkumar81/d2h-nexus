@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface NotificationDeliveryRepository extends JpaRepository<NotificationDelivery, Long> {
 
-    Page<NotificationDelivery> findByTenantIdOrderByCreatedAtDesc(Long tenantId, Pageable pageable);
+    Page<NotificationDelivery> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
     List<NotificationDelivery> findByOutboxEventId(Long outboxEventId);
 }

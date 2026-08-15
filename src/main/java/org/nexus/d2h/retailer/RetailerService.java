@@ -5,9 +5,6 @@ import org.nexus.d2h.audit.AuditService;
 import org.nexus.d2h.common.BusinessException;
 import org.nexus.d2h.common.PageResponse;
 import org.nexus.d2h.common.ResourceNotFoundException;
-import org.nexus.d2h.tenant.Tenant;
-import org.nexus.d2h.tenant.TenantContext;
-import org.nexus.d2h.tenant.TenantRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,50 +16,42 @@ import org.springframework.transaction.annotation.Transactional;
 public class RetailerService {
 
     private final RetailerRepository retailerRepository;
-    private final TenantRepository tenantRepository;
     private final AuditService auditService;
 
-    public RetailerService(RetailerRepository retailerRepository,
-                           TenantRepository tenantRepository,
-                           AuditService auditService) {
+    public RetailerService(RetailerRepository retailerRepository, AuditService auditService) {
         this.retailerRepository = retailerRepository;
-        this.tenantRepository = tenantRepository;
         this.auditService = auditService;
     }
 
     @Transactional
     public RetailerDto create(CreateRetailerRequest request) {
-        Tenant tenant = resolveTenant();
-
-        if (retailerRepository.existsByTenantIdAndRetailerCode(tenant.getId(), request.retailerCode())) {
+        String code = request.retailerCode().trim().toUpperCase();
+        if (retailerRepository.existsByRetailerCode(code)) {
             throw new BusinessException("DUPLICATE_RETAILER_CODE",
-                    "Retailer code '" + request.retailerCode() + "' already exists");
+                    "Retailer code '" + code + "' already exists");
         }
-
         Retailer retailer = new Retailer();
-        retailer.setTenantId(tenant.getId());
-        applyCreate(retailer, request);
-
+        applyCreate(retailer, request, code);
         Retailer saved = retailerRepository.save(retailer);
-        log.info("Retailer created: code={} tenant={}", saved.getRetailerCode(), tenant.getTenantCode());
-        auditService.record(tenant.getId(), "Retailer", String.valueOf(saved.getId()),
-                "CREATE", "code=" + saved.getRetailerCode(), null);
+        log.info("Retailer created: code={}", saved.getRetailerCode());
+        auditService.record("Retailer", String.valueOf(saved.getId()), "CREATE",
+                "code=" + saved.getRetailerCode(), null);
         return RetailerDto.from(saved);
     }
 
     @Transactional(readOnly = true)
     public RetailerDto getById(Long id) {
-        return RetailerDto.from(findForCurrentTenant(id));
+        return RetailerDto.from(findById(id));
     }
 
     @Transactional
     public RetailerDto update(Long id, UpdateRetailerRequest request) {
-        Retailer retailer = findForCurrentTenant(id);
+        Retailer retailer = findById(id);
         applyUpdate(retailer, request);
         retailer.setUpdatedBy(currentUsername());
         Retailer saved = retailerRepository.save(retailer);
-        auditService.record(resolveTenant().getId(), "Retailer", String.valueOf(id),
-                "UPDATE", "code=" + saved.getRetailerCode(), null);
+        auditService.record("Retailer", String.valueOf(id), "UPDATE",
+                "code=" + saved.getRetailerCode(), null);
         return RetailerDto.from(saved);
     }
 
@@ -78,35 +67,24 @@ public class RetailerService {
 
     @Transactional(readOnly = true)
     public PageResponse<RetailerDto> search(String query, RetailerStatus status, Pageable pageable) {
-        Long tenantId = resolveTenant().getId();
         Page<RetailerDto> page = retailerRepository
-                .findAll(RetailerSpecification.search(tenantId, query, status), pageable)
+                .findAll(RetailerSpecification.search(query, status), pageable)
                 .map(RetailerDto::from);
         return PageResponse.from(page);
     }
 
     // ── private helpers ───────────────────────────────────────────────────────
 
-    private Retailer findForCurrentTenant(Long id) {
-        Long tenantId = resolveTenant().getId();
-        return retailerRepository.findByIdAndTenantId(id, tenantId)
+    private Retailer findById(Long id) {
+        return retailerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Retailer", id));
     }
 
     private RetailerDto changeStatus(Long id, RetailerStatus newStatus) {
-        Retailer retailer = findForCurrentTenant(id);
+        Retailer retailer = findById(id);
         retailer.setStatus(newStatus);
         retailer.setUpdatedBy(currentUsername());
         return RetailerDto.from(retailerRepository.save(retailer));
-    }
-
-    private Tenant resolveTenant() {
-        String tenantCode = TenantContext.getCurrentTenant();
-        if (tenantCode == null || tenantCode.isBlank()) {
-            throw new BusinessException("TENANT_CONTEXT_MISSING", "Tenant context is not set");
-        }
-        return tenantRepository.findByTenantCode(tenantCode)
-                .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantCode));
     }
 
     private String currentUsername() {
@@ -114,8 +92,8 @@ public class RetailerService {
         return auth != null ? auth.getName() : "system";
     }
 
-    private void applyCreate(Retailer r, CreateRetailerRequest req) {
-        r.setRetailerCode(req.retailerCode().trim().toUpperCase());
+    private void applyCreate(Retailer r, CreateRetailerRequest req, String code) {
+        r.setRetailerCode(code);
         r.setRetailerName(req.retailerName().trim());
         r.setMobile(req.mobile());
         r.setAlternateMobile(req.alternateMobile());

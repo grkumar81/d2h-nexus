@@ -6,11 +6,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.nexus.d2h.audit.AuditService;
 import org.nexus.d2h.common.BusinessException;
 import org.nexus.d2h.common.ResourceNotFoundException;
-import org.nexus.d2h.tenant.Tenant;
-import org.nexus.d2h.tenant.TenantContext;
-import org.nexus.d2h.tenant.TenantRepository;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
@@ -28,40 +26,23 @@ import static org.mockito.Mockito.*;
 class RetailerServiceTest {
 
     @Mock RetailerRepository retailerRepository;
-    @Mock TenantRepository tenantRepository;
-    @Mock org.nexus.d2h.audit.AuditService auditService;
+    @Mock AuditService auditService;
     @InjectMocks RetailerService retailerService;
-
-    private Tenant tenant;
 
     @BeforeEach
     void setUp() {
-        tenant = new Tenant();
-        tenant.setTenantCode("TENANT1");
-        // Use reflection to set id since BaseEntity uses @GeneratedValue
-        try {
-            var idField = org.nexus.d2h.common.BaseEntity.class.getDeclaredField("id");
-            idField.setAccessible(true);
-            idField.set(tenant, 1L);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
-        TenantContext.setCurrentTenant("TENANT1");
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("testuser", null, List.of()));
     }
 
     @BeforeEach
     void tearDown() {
-        TenantContext.clear();
         SecurityContextHolder.clearContext();
     }
 
     @Test
     void create_success() {
-        when(tenantRepository.findByTenantCode("TENANT1")).thenReturn(Optional.of(tenant));
-        when(retailerRepository.existsByTenantIdAndRetailerCode(1L, "RET001")).thenReturn(false);
+        when(retailerRepository.existsByRetailerCode("RET001")).thenReturn(false);
         when(retailerRepository.save(any())).thenAnswer(inv -> {
             Retailer r = inv.getArgument(0);
             setId(r, 10L);
@@ -77,8 +58,7 @@ class RetailerServiceTest {
 
     @Test
     void create_duplicateCode_throwsBusinessException() {
-        when(tenantRepository.findByTenantCode("TENANT1")).thenReturn(Optional.of(tenant));
-        when(retailerRepository.existsByTenantIdAndRetailerCode(1L, "RET001")).thenReturn(true);
+        when(retailerRepository.existsByRetailerCode("RET001")).thenReturn(true);
 
         assertThatThrownBy(() -> retailerService.create(createRequest("RET001")))
                 .isInstanceOf(BusinessException.class)
@@ -87,8 +67,7 @@ class RetailerServiceTest {
 
     @Test
     void getById_notFound_throwsResourceNotFoundException() {
-        when(tenantRepository.findByTenantCode("TENANT1")).thenReturn(Optional.of(tenant));
-        when(retailerRepository.findByIdAndTenantId(99L, 1L)).thenReturn(Optional.empty());
+        when(retailerRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> retailerService.getById(99L))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -97,8 +76,7 @@ class RetailerServiceTest {
     @Test
     void update_success() {
         Retailer existing = retailerWithId(10L);
-        when(tenantRepository.findByTenantCode("TENANT1")).thenReturn(Optional.of(tenant));
-        when(retailerRepository.findByIdAndTenantId(10L, 1L)).thenReturn(Optional.of(existing));
+        when(retailerRepository.findById(10L)).thenReturn(Optional.of(existing));
         when(retailerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         RetailerDto dto = retailerService.update(10L, updateRequest("Updated Name"));
@@ -110,8 +88,7 @@ class RetailerServiceTest {
     void activate_setsStatusActive() {
         Retailer existing = retailerWithId(10L);
         existing.setStatus(RetailerStatus.INACTIVE);
-        when(tenantRepository.findByTenantCode("TENANT1")).thenReturn(Optional.of(tenant));
-        when(retailerRepository.findByIdAndTenantId(10L, 1L)).thenReturn(Optional.of(existing));
+        when(retailerRepository.findById(10L)).thenReturn(Optional.of(existing));
         when(retailerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         RetailerDto dto = retailerService.activate(10L);
@@ -122,8 +99,7 @@ class RetailerServiceTest {
     @Test
     void deactivate_setsStatusInactive() {
         Retailer existing = retailerWithId(10L);
-        when(tenantRepository.findByTenantCode("TENANT1")).thenReturn(Optional.of(tenant));
-        when(retailerRepository.findByIdAndTenantId(10L, 1L)).thenReturn(Optional.of(existing));
+        when(retailerRepository.findById(10L)).thenReturn(Optional.of(existing));
         when(retailerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         RetailerDto dto = retailerService.deactivate(10L);
@@ -134,7 +110,6 @@ class RetailerServiceTest {
     @Test
     void search_returnsPaginatedResults() {
         Retailer r = retailerWithId(10L);
-        when(tenantRepository.findByTenantCode("TENANT1")).thenReturn(Optional.of(tenant));
         when(retailerRepository.findAll(any(Specification.class), any(PageRequest.class)))
                 .thenReturn(new PageImpl<>(List.of(r)));
 
@@ -145,22 +120,11 @@ class RetailerServiceTest {
     }
 
     @Test
-    void tenantIsolation_cannotAccessOtherTenantRetailer() {
-        // Tenant context is TENANT1 (id=1), but retailer belongs to tenant 2
-        when(tenantRepository.findByTenantCode("TENANT1")).thenReturn(Optional.of(tenant));
-        when(retailerRepository.findByIdAndTenantId(5L, 1L)).thenReturn(Optional.empty());
+    void getById_notFound_throwsResourceNotFoundException_isolation() {
+        when(retailerRepository.findById(5L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> retailerService.getById(5L))
                 .isInstanceOf(ResourceNotFoundException.class);
-    }
-
-    @Test
-    void create_missingTenantContext_throwsBusinessException() {
-        TenantContext.clear();
-
-        assertThatThrownBy(() -> retailerService.create(createRequest("RET001")))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Tenant context");
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
@@ -177,7 +141,6 @@ class RetailerServiceTest {
 
     private Retailer retailerWithId(Long id) {
         Retailer r = new Retailer();
-        r.setTenantId(1L);
         r.setRetailerCode("RET001");
         r.setRetailerName("Test Retailer");
         r.setMobile("9876543210");

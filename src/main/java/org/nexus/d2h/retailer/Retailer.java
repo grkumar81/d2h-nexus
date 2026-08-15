@@ -13,9 +13,6 @@ import java.time.LocalDate;
 @Table(name = "retailers")
 public class Retailer extends BaseEntity {
 
-    @Column(name = "tenant_id", nullable = false, updatable = false)
-    private Long tenantId;
-
     @Column(name = "retailer_code", nullable = false, length = 50)
     private String retailerCode;
 

@@ -7,15 +7,11 @@ import java.util.Optional;
 
 public interface RetailerRepository extends JpaRepository<Retailer, Long>, JpaSpecificationExecutor<Retailer> {
 
-    boolean existsByTenantIdAndRetailerCode(Long tenantId, String retailerCode);
+    boolean existsByRetailerCode(String retailerCode);
 
-    boolean existsByTenantIdAndRetailerCodeAndIdNot(Long tenantId, String retailerCode, Long id);
+    boolean existsByRetailerCodeAndIdNot(String retailerCode, Long id);
 
-    Optional<Retailer> findByIdAndTenantId(Long id, Long tenantId);
+    Optional<Retailer> findByRetailerCode(String retailerCode);
 
-    Optional<Retailer> findByTenantIdAndRetailerCode(Long tenantId, String retailerCode);
-
-    long countByTenantId(Long tenantId);
-
-    long countByTenantIdAndStatus(Long tenantId, RetailerStatus status);
+    long countByStatus(RetailerStatus status);
 }

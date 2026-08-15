@@ -11,9 +11,7 @@ import org.nexus.d2h.common.BusinessException;
 import org.nexus.d2h.common.ResourceNotFoundException;
 import org.nexus.d2h.retailer.Retailer;
 import org.nexus.d2h.retailer.RetailerRepository;
-import org.nexus.d2h.tenant.Tenant;
 import org.nexus.d2h.tenant.TenantContext;
-import org.nexus.d2h.tenant.TenantRepository;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
@@ -33,23 +31,16 @@ import static org.mockito.Mockito.*;
 class FinanceServiceTest {
 
     @Mock FinancialTransactionRepository txRepository;
-    @Mock TenantRepository tenantRepository;
     @Mock RetailerRepository retailerRepository;
     @Mock org.nexus.d2h.notification.NotificationEventPublisher eventPublisher;
     @Mock org.nexus.d2h.audit.AuditService auditService;
     @InjectMocks FinanceService financeService;
 
-    private Tenant tenant;
     private Retailer retailer;
 
     @BeforeEach
     void setUp() {
-        tenant = new Tenant();
-        tenant.setTenantCode("T1");
-        setId(tenant, 1L);
-
         retailer = new Retailer();
-        retailer.setTenantId(1L);
         retailer.setRetailerCode("RET001");
         retailer.setRetailerName("Test Retailer");
         retailer.setMobile("9876543210");
@@ -68,9 +59,8 @@ class FinanceServiceTest {
 
     @Test
     void create_success() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(retailerRepository.findByIdAndTenantId(5L, 1L)).thenReturn(Optional.of(retailer));
-        when(txRepository.existsByTenantIdAndReference(1L, "REF001")).thenReturn(false);
+        when(retailerRepository.findById(5L)).thenReturn(Optional.of(retailer));
+        when(txRepository.existsByReference("REF001")).thenReturn(false);
         when(txRepository.save(any())).thenAnswer(inv -> { setId(inv.getArgument(0), 100L); return inv.getArgument(0); });
 
         FinancialTransactionDto dto = financeService.create(new CreateTransactionRequest(
@@ -84,9 +74,8 @@ class FinanceServiceTest {
 
     @Test
     void create_duplicateReference_throwsBusinessException() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(retailerRepository.findByIdAndTenantId(5L, 1L)).thenReturn(Optional.of(retailer));
-        when(txRepository.existsByTenantIdAndReference(1L, "REF001")).thenReturn(true);
+        when(retailerRepository.findById(5L)).thenReturn(Optional.of(retailer));
+        when(txRepository.existsByReference("REF001")).thenReturn(true);
 
         assertThatThrownBy(() -> financeService.create(new CreateTransactionRequest(
                 5L, TransactionType.PAYMENT_RECEIVED, LocalDate.now(),
@@ -97,8 +86,7 @@ class FinanceServiceTest {
 
     @Test
     void create_autoGeneratesReferenceWhenBlank() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(retailerRepository.findByIdAndTenantId(5L, 1L)).thenReturn(Optional.of(retailer));
+        when(retailerRepository.findById(5L)).thenReturn(Optional.of(retailer));
         when(txRepository.save(any())).thenAnswer(inv -> { setId(inv.getArgument(0), 100L); return inv.getArgument(0); });
 
         FinancialTransactionDto dto = financeService.create(new CreateTransactionRequest(
@@ -111,8 +99,7 @@ class FinanceServiceTest {
     @Test
     void reverse_postedTransaction_succeeds() {
         FinancialTransaction original = txWithId(10L, TransactionType.PAYMENT_RECEIVED, TransactionStatus.POSTED);
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(txRepository.findByIdAndTenantId(10L, 1L)).thenReturn(Optional.of(original));
+        when(txRepository.findById(10L)).thenReturn(Optional.of(original));
         when(txRepository.save(any())).thenAnswer(inv -> { setId(inv.getArgument(0), 200L); return inv.getArgument(0); });
 
         FinancialTransactionDto dto = financeService.reverse(10L, "Incorrect payment");
@@ -127,8 +114,7 @@ class FinanceServiceTest {
         FinancialTransaction original = txWithId(10L, TransactionType.PAYMENT_RECEIVED, TransactionStatus.REVERSED);
         FinancialTransaction existingReversal = txWithId(11L, TransactionType.REVERSAL, TransactionStatus.POSTED);
         original.setReversedBy(existingReversal);
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(txRepository.findByIdAndTenantId(10L, 1L)).thenReturn(Optional.of(original));
+        when(txRepository.findById(10L)).thenReturn(Optional.of(original));
 
         assertThatThrownBy(() -> financeService.reverse(10L, null))
                 .isInstanceOf(BusinessException.class)
@@ -138,8 +124,7 @@ class FinanceServiceTest {
     @Test
     void reverse_nonPostedTransaction_throwsBusinessException() {
         FinancialTransaction tx = txWithId(10L, TransactionType.PAYMENT_RECEIVED, TransactionStatus.PENDING);
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(txRepository.findByIdAndTenantId(10L, 1L)).thenReturn(Optional.of(tx));
+        when(txRepository.findById(10L)).thenReturn(Optional.of(tx));
 
         assertThatThrownBy(() -> financeService.reverse(10L, null))
                 .isInstanceOf(BusinessException.class)
@@ -149,8 +134,7 @@ class FinanceServiceTest {
     @Test
     void adjust_postedTransaction_createsAdjustmentRecord() {
         FinancialTransaction original = txWithId(10L, TransactionType.PAYMENT_RECEIVED, TransactionStatus.POSTED);
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(txRepository.findByIdAndTenantId(10L, 1L)).thenReturn(Optional.of(original));
+        when(txRepository.findById(10L)).thenReturn(Optional.of(original));
         when(txRepository.save(any())).thenAnswer(inv -> { setId(inv.getArgument(0), 300L); return inv.getArgument(0); });
 
         FinancialTransactionDto dto = financeService.adjust(10L,
@@ -163,8 +147,7 @@ class FinanceServiceTest {
     @Test
     void adjust_zeroAmount_throwsBusinessException() {
         FinancialTransaction original = txWithId(10L, TransactionType.PAYMENT_RECEIVED, TransactionStatus.POSTED);
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(txRepository.findByIdAndTenantId(10L, 1L)).thenReturn(Optional.of(original));
+        when(txRepository.findById(10L)).thenReturn(Optional.of(original));
 
         assertThatThrownBy(() -> financeService.adjust(10L,
                 new AdjustTransactionRequest(BigDecimal.ZERO, "reason")))
@@ -174,11 +157,10 @@ class FinanceServiceTest {
 
     @Test
     void getRetailerSummary_calculatesCorrectly() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(retailerRepository.findByIdAndTenantId(5L, 1L)).thenReturn(Optional.of(retailer));
-        when(txRepository.sumBoxSalesByRetailer(1L, 5L)).thenReturn(BigDecimal.valueOf(100000));
-        when(txRepository.sumPaymentsReceivedByRetailer(1L, 5L)).thenReturn(BigDecimal.valueOf(70000));
-        when(txRepository.sumRechargeByRetailer(1L, 5L)).thenReturn(BigDecimal.valueOf(15000));
+        when(retailerRepository.findById(5L)).thenReturn(Optional.of(retailer));
+        when(txRepository.sumBoxSalesByRetailer(5L)).thenReturn(BigDecimal.valueOf(100000));
+        when(txRepository.sumPaymentsReceivedByRetailer(5L)).thenReturn(BigDecimal.valueOf(70000));
+        when(txRepository.sumRechargeByRetailer(5L)).thenReturn(BigDecimal.valueOf(15000));
 
         RetailerFinanceSummaryDto summary = financeService.getRetailerSummary(5L);
 
@@ -190,11 +172,10 @@ class FinanceServiceTest {
 
     @Test
     void getTenantSummary_calculatesOutstanding() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(txRepository.sumBoxSalesByTenant(1L)).thenReturn(BigDecimal.valueOf(200000));
-        when(txRepository.sumPaymentsReceivedByTenant(1L)).thenReturn(BigDecimal.valueOf(150000));
-        when(txRepository.sumRechargeByTenant(1L)).thenReturn(BigDecimal.valueOf(30000));
-        when(txRepository.countPostedByTenant(1L)).thenReturn(50L);
+        when(txRepository.sumBoxSales()).thenReturn(BigDecimal.valueOf(200000));
+        when(txRepository.sumPaymentsReceived()).thenReturn(BigDecimal.valueOf(150000));
+        when(txRepository.sumRecharge()).thenReturn(BigDecimal.valueOf(30000));
+        when(txRepository.countPosted()).thenReturn(50L);
 
         FinanceSummaryDto summary = financeService.getTenantSummary();
 
@@ -205,17 +186,16 @@ class FinanceServiceTest {
     @Test
     void recordBoxSale_idempotent_skipsIfAlreadyExists() {
         StbSale sale = saleWithId(20L);
-        when(txRepository.existsByTenantIdAndSaleId(1L, 20L)).thenReturn(true);
+        when(txRepository.existsBySaleId(20L)).thenReturn(true);
 
-        financeService.recordBoxSale(1L, retailer, sale);
+        financeService.recordBoxSale(retailer, sale);
 
         verify(txRepository, never()).save(any());
     }
 
     @Test
     void tenantIsolation_cannotAccessOtherTenantTransaction() {
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
-        when(txRepository.findByIdAndTenantId(99L, 1L)).thenReturn(Optional.empty());
+        when(txRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> financeService.getById(99L))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -224,7 +204,6 @@ class FinanceServiceTest {
     @Test
     void search_returnsPaginatedResults() {
         FinancialTransaction tx = txWithId(10L, TransactionType.PAYMENT_RECEIVED, TransactionStatus.POSTED);
-        when(tenantRepository.findByTenantCode("T1")).thenReturn(Optional.of(tenant));
         when(txRepository.findAll(any(Specification.class), any(PageRequest.class)))
                 .thenReturn(new PageImpl<>(List.of(tx)));
 
@@ -241,15 +220,13 @@ class FinanceServiceTest {
         assertThatThrownBy(() -> financeService.create(new CreateTransactionRequest(
                 5L, TransactionType.PAYMENT_RECEIVED, LocalDate.now(),
                 BigDecimal.valueOf(1000), null, null, null, null, null)))
-                .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", "TENANT_CONTEXT_MISSING");
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private FinancialTransaction txWithId(Long id, TransactionType type, TransactionStatus status) {
         FinancialTransaction tx = new FinancialTransaction();
-        tx.setTenantId(1L);
         tx.setRetailer(retailer);
         tx.setTransactionType(type);
         tx.setTransactionStatus(status);
@@ -262,7 +239,6 @@ class FinanceServiceTest {
 
     private StbSale saleWithId(Long id) {
         StbSale s = new StbSale();
-        s.setTenantId(1L);
         s.setRetailer(retailer);
         s.setTransactionDate(LocalDate.now());
         s.setTotalAmount(BigDecimal.valueOf(3000));

@@ -6,9 +6,6 @@ import org.nexus.d2h.common.PageResponse;
 import org.nexus.d2h.common.ResourceNotFoundException;
 import org.nexus.d2h.retailer.Retailer;
 import org.nexus.d2h.retailer.RetailerRepository;
-import org.nexus.d2h.tenant.Tenant;
-import org.nexus.d2h.tenant.TenantContext;
-import org.nexus.d2h.tenant.TenantRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,39 +19,32 @@ import java.util.Set;
 @Service
 public class AssetService {
 
-    // Statuses that block assignment/tagging
     private static final Set<AssetStatus> UNASSIGNABLE =
             Set.of(AssetStatus.SOLD, AssetStatus.DAMAGED, AssetStatus.LOST,
                    AssetStatus.BLOCKED, AssetStatus.SCRAPPED);
 
-    // Statuses that allow a box sale
     static final Set<AssetStatus> SALEABLE =
             Set.of(AssetStatus.AVAILABLE, AssetStatus.ALLOCATED);
 
     private final AssetRepository assetRepository;
     private final AssetHistoryRepository historyRepository;
-    private final TenantRepository tenantRepository;
     private final RetailerRepository retailerRepository;
 
     public AssetService(AssetRepository assetRepository,
                         AssetHistoryRepository historyRepository,
-                        TenantRepository tenantRepository,
                         RetailerRepository retailerRepository) {
         this.assetRepository = assetRepository;
         this.historyRepository = historyRepository;
-        this.tenantRepository = tenantRepository;
         this.retailerRepository = retailerRepository;
     }
 
     @Transactional
     public AssetDto create(CreateAssetRequest request) {
-        Tenant tenant = resolveTenant();
-        if (assetRepository.existsByTenantIdAndSerialNumber(tenant.getId(), request.serialNumber())) {
+        if (assetRepository.existsBySerialNumber(request.serialNumber())) {
             throw new BusinessException("DUPLICATE_SERIAL_NUMBER",
                     "Serial number '" + request.serialNumber() + "' already exists");
         }
         StbAsset asset = new StbAsset();
-        asset.setTenantId(tenant.getId());
         asset.setSerialNumber(request.serialNumber().trim().toUpperCase());
         asset.setBoxNumber(request.boxNumber());
         asset.setModel(request.model());
@@ -66,18 +56,18 @@ public class AssetService {
 
         StbAsset saved = assetRepository.save(asset);
         recordHistory(saved, null, AssetStatus.AVAILABLE, null, "Asset created");
-        log.info("Asset created: serial={} tenant={}", saved.getSerialNumber(), tenant.getTenantCode());
+        log.info("Asset created: serial={}", saved.getSerialNumber());
         return AssetDto.from(saved);
     }
 
     @Transactional(readOnly = true)
     public AssetDto getById(Long id) {
-        return AssetDto.from(findForCurrentTenant(id));
+        return AssetDto.from(findById(id));
     }
 
     @Transactional
     public AssetDto update(Long id, UpdateAssetRequest request) {
-        StbAsset asset = findForCurrentTenant(id);
+        StbAsset asset = findById(id);
         asset.setBoxNumber(request.boxNumber());
         asset.setModel(request.model());
         asset.setManufacturer(request.manufacturer());
@@ -90,12 +80,13 @@ public class AssetService {
 
     @Transactional
     public AssetDto tag(Long id, TagAssetRequest request) {
-        StbAsset asset = findForCurrentTenant(id);
+        StbAsset asset = findById(id);
         if (UNASSIGNABLE.contains(asset.getStatus())) {
             throw new BusinessException("ASSET_NOT_TAGGABLE",
                     "Asset in status " + asset.getStatus() + " cannot be tagged");
         }
-        Retailer retailer = findRetailerForCurrentTenant(request.retailerId());
+        Retailer retailer = retailerRepository.findById(request.retailerId())
+                .orElseThrow(() -> new ResourceNotFoundException("Retailer", request.retailerId()));
         AssetStatus from = asset.getStatus();
 
         asset.setRetailer(retailer);
@@ -111,7 +102,7 @@ public class AssetService {
 
     @Transactional
     public AssetDto transition(Long id, AssetStatus newStatus, String remarks) {
-        StbAsset asset = findForCurrentTenant(id);
+        StbAsset asset = findById(id);
         validateTransition(asset.getStatus(), newStatus);
         AssetStatus from = asset.getStatus();
         asset.setStatus(newStatus);
@@ -126,29 +117,24 @@ public class AssetService {
 
     @Transactional(readOnly = true)
     public PageResponse<AssetDto> search(String query, AssetStatus status, Long retailerId, Pageable pageable) {
-        Long tenantId = resolveTenant().getId();
         Page<AssetDto> page = assetRepository
-                .findAll(AssetSpecification.search(tenantId, query, status, retailerId), pageable)
+                .findAll(AssetSpecification.search(query, status, retailerId), pageable)
                 .map(AssetDto::from);
         return PageResponse.from(page);
     }
 
     @Transactional(readOnly = true)
     public PageResponse<AssetHistoryDto> getHistory(Long assetId, Pageable pageable) {
-        Long tenantId = resolveTenant().getId();
-        // Verify asset belongs to tenant
-        findForCurrentTenant(assetId);
+        findById(assetId); // verify exists
         Page<AssetHistoryDto> page = historyRepository
-                .findByAssetIdAndTenantIdOrderByChangedAtDesc(assetId, tenantId, pageable)
+                .findByAssetIdOrderByChangedAtDesc(assetId, pageable)
                 .map(AssetHistoryDto::from);
         return PageResponse.from(page);
     }
 
-    // ── package-private: used by BoxSaleService in same transaction ───────────
-
     @Transactional
-    public StbAsset markSold(Long assetId, Long tenantId, LocalDate saleDate, String changedBy) {
-        StbAsset asset = assetRepository.findByIdAndTenantId(assetId, tenantId)
+    public StbAsset markSold(Long assetId, LocalDate saleDate, String changedBy) {
+        StbAsset asset = assetRepository.findById(assetId)
                 .orElseThrow(() -> new ResourceNotFoundException("Asset", assetId));
         if (!SALEABLE.contains(asset.getStatus())) {
             throw new BusinessException("ASSET_NOT_SALEABLE",
@@ -165,25 +151,9 @@ public class AssetService {
 
     // ── private helpers ───────────────────────────────────────────────────────
 
-    private StbAsset findForCurrentTenant(Long id) {
-        Long tenantId = resolveTenant().getId();
-        return assetRepository.findByIdAndTenantId(id, tenantId)
+    private StbAsset findById(Long id) {
+        return assetRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Asset", id));
-    }
-
-    private Retailer findRetailerForCurrentTenant(Long retailerId) {
-        Long tenantId = resolveTenant().getId();
-        return retailerRepository.findByIdAndTenantId(retailerId, tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Retailer", retailerId));
-    }
-
-    private Tenant resolveTenant() {
-        String tenantCode = TenantContext.getCurrentTenant();
-        if (tenantCode == null || tenantCode.isBlank()) {
-            throw new BusinessException("TENANT_CONTEXT_MISSING", "Tenant context is not set");
-        }
-        return tenantRepository.findByTenantCode(tenantCode)
-                .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantCode));
     }
 
     private String currentUsername() {
@@ -197,12 +167,9 @@ public class AssetService {
     }
 
     private void validateTransition(AssetStatus current, AssetStatus target) {
-        // Finalized states cannot transition further
         if (current == AssetStatus.SCRAPPED) {
-            throw new BusinessException("INVALID_ASSET_TRANSITION",
-                    "Scrapped asset cannot change status");
+            throw new BusinessException("INVALID_ASSET_TRANSITION", "Scrapped asset cannot change status");
         }
-        // SOLD assets can only be ACTIVATED or RETURNED
         if (current == AssetStatus.SOLD &&
                 target != AssetStatus.ACTIVATED && target != AssetStatus.RETURNED) {
             throw new BusinessException("INVALID_ASSET_TRANSITION",

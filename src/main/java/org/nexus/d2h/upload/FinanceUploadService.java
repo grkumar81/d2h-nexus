@@ -85,7 +85,7 @@ public class FinanceUploadService {
                 try {
                     RowData rd = parseRow(row, idx, rowNum, tenant, seenRefs);
                     seenRefs.add(rd.reference());
-                    financeService.createFromUpload(tenant.getId(), rd.retailer(), rd.type(), rd.date(),
+                    financeService.createFromUpload(rd.retailer(), rd.type(), rd.date(),
                             rd.amount(), rd.paymentMethod(), rd.reference(), rd.paymentReference(),
                             rd.description(), rd.remarks());
                     counters[1]++;
@@ -130,7 +130,7 @@ public class FinanceUploadService {
                 try {
                     RowData rd = parseExcelRow(row, idx, i + 1, tenant, seenRefs);
                     seenRefs.add(rd.reference());
-                    financeService.createFromUpload(tenant.getId(), rd.retailer(), rd.type(), rd.date(),
+                    financeService.createFromUpload(rd.retailer(), rd.type(), rd.date(),
                             rd.amount(), rd.paymentMethod(), rd.reference(), rd.paymentReference(),
                             rd.description(), rd.remarks());
                     counters[1]++;
@@ -163,7 +163,7 @@ public class FinanceUploadService {
             payload.put("failureCount", failed);
             payload.put("duplicateCount", duplicates);
             payload.put("totalAmount", totalAmount.toPlainString());
-            eventPublisher.publish(tenant.getId(), NotificationEventType.FINANCE_UPLOAD_COMPLETED,
+            eventPublisher.publish(NotificationEventType.FINANCE_UPLOAD_COMPLETED,
                     "upload", payload);
         } catch (Exception e) {
             log.warn("Failed to publish finance upload notification: {}", e.getMessage());
@@ -227,7 +227,7 @@ public class FinanceUploadService {
     // ── Validation helpers ────────────────────────────────────────────────────
 
     private Retailer findRetailer(Tenant tenant, String code, int rowNum) {
-        return retailerRepository.findByTenantIdAndRetailerCode(tenant.getId(), code.trim().toUpperCase())
+        return retailerRepository.findByRetailerCode(code.trim().toUpperCase())
                 .orElseThrow(() -> new BusinessException("INVALID_RETAILER",
                         "Row " + rowNum + ": Retailer not found: " + code));
     }

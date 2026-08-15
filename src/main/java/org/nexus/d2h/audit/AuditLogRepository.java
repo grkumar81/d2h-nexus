@@ -12,8 +12,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
 
     @Query("""
             SELECT a FROM AuditLog a
-            WHERE a.tenantId = :tenantId
-              AND (:entityType IS NULL OR a.entityType = :entityType)
+            WHERE (:entityType IS NULL OR a.entityType = :entityType)
               AND (:entityId   IS NULL OR a.entityId   = :entityId)
               AND (:action     IS NULL OR a.action     = :action)
               AND (:performedBy IS NULL OR a.performedBy = :performedBy)
@@ -21,8 +20,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
               AND (:to   IS NULL OR a.createdAt <= :to)
             ORDER BY a.createdAt DESC
             """)
-    Page<AuditLog> search(@Param("tenantId") Long tenantId,
-                          @Param("entityType") String entityType,
+    Page<AuditLog> search(@Param("entityType") String entityType,
                           @Param("entityId") String entityId,
                           @Param("action") String action,
                           @Param("performedBy") String performedBy,

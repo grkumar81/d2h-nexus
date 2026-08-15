@@ -19,18 +19,16 @@ public class NotificationEventPublisher {
         this.outboxEventRepository = outboxEventRepository;
     }
 
-    public void publish(Long tenantId, NotificationEventType eventType,
+    public void publish(NotificationEventType eventType,
                         String aggregateId, Map<String, Object> payload) {
         try {
             OutboxEvent event = new OutboxEvent();
-            event.setTenantId(tenantId);
             event.setEventType(eventType.name());
             event.setAggregateId(aggregateId);
             event.setPayload(MAPPER.writeValueAsString(payload));
             event.setStatus(NotificationStatus.PENDING);
             outboxEventRepository.save(event);
-            log.debug("Outbox event queued: type={} aggregateId={} tenantId={}",
-                    eventType, aggregateId, tenantId);
+            log.debug("Outbox event queued: type={} aggregateId={}", eventType, aggregateId);
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize notification payload for event={} aggregate={}: {}",
                     eventType, aggregateId, e.getMessage());

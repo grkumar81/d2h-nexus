@@ -10,12 +10,9 @@ public final class RetailerSpecification {
 
     private RetailerSpecification() {}
 
-    public static Specification<Retailer> search(Long tenantId, String query, RetailerStatus status) {
+    public static Specification<Retailer> search(String query, RetailerStatus status) {
         return (root, cq, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-
-            // Tenant isolation — always applied
-            predicates.add(cb.equal(root.get("tenantId"), tenantId));
 
             if (status != null) {
                 predicates.add(cb.equal(root.get("status"), status));

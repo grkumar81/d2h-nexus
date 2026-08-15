@@ -31,11 +31,9 @@ class RetailerUploadServiceTest {
     @Mock TenantRepository tenantRepository;
     @InjectMocks RetailerUploadService uploadService;
 
-    private Tenant tenant;
-
     @BeforeEach
     void setUp() throws Exception {
-        tenant = new Tenant();
+        Tenant tenant = new Tenant();
         tenant.setTenantCode("TENANT1");
         var idField = org.nexus.d2h.common.BaseEntity.class.getDeclaredField("id");
         idField.setAccessible(true);
@@ -52,12 +50,10 @@ class RetailerUploadServiceTest {
     @Test
     void validCsv_allRowsInserted() {
         String csv = "retailer_code,retailer_name,mobile\nRET001,Retailer One,9876543210\nRET002,Retailer Two,9876543211\n";
-        MockMultipartFile file = csvFile(csv);
-
-        when(retailerRepository.existsByTenantIdAndRetailerCode(eq(1L), anyString())).thenReturn(false);
+        when(retailerRepository.existsByRetailerCode(anyString())).thenReturn(false);
         when(retailerRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
-        UploadResult result = uploadService.upload(file);
+        UploadResult result = uploadService.upload(csvFile(csv));
 
         assertThat(result.totalRecords()).isEqualTo(2);
         assertThat(result.successRecords()).isEqualTo(2);
@@ -69,12 +65,10 @@ class RetailerUploadServiceTest {
     @Test
     void csvWithDuplicateInFile_countedAsDuplicate() {
         String csv = "retailer_code,retailer_name,mobile\nRET001,Retailer One,9876543210\nRET001,Retailer One Again,9876543211\n";
-        MockMultipartFile file = csvFile(csv);
-
-        when(retailerRepository.existsByTenantIdAndRetailerCode(eq(1L), anyString())).thenReturn(false);
+        when(retailerRepository.existsByRetailerCode(anyString())).thenReturn(false);
         when(retailerRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
-        UploadResult result = uploadService.upload(file);
+        UploadResult result = uploadService.upload(csvFile(csv));
 
         assertThat(result.totalRecords()).isEqualTo(2);
         assertThat(result.successRecords()).isEqualTo(1);
@@ -84,11 +78,9 @@ class RetailerUploadServiceTest {
     @Test
     void csvWithExistingCode_countedAsDuplicate() {
         String csv = "retailer_code,retailer_name,mobile\nRET001,Retailer One,9876543210\n";
-        MockMultipartFile file = csvFile(csv);
+        when(retailerRepository.existsByRetailerCode("RET001")).thenReturn(true);
 
-        when(retailerRepository.existsByTenantIdAndRetailerCode(1L, "RET001")).thenReturn(true);
-
-        UploadResult result = uploadService.upload(file);
+        UploadResult result = uploadService.upload(csvFile(csv));
 
         assertThat(result.duplicateRecords()).isEqualTo(1);
         assertThat(result.successRecords()).isEqualTo(0);
@@ -97,9 +89,8 @@ class RetailerUploadServiceTest {
     @Test
     void csvMissingRequiredColumn_throwsBusinessException() {
         String csv = "retailer_code,retailer_name\nRET001,Retailer One\n";
-        MockMultipartFile file = csvFile(csv);
 
-        assertThatThrownBy(() -> uploadService.upload(file))
+        assertThatThrownBy(() -> uploadService.upload(csvFile(csv)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("mobile");
     }
@@ -107,11 +98,9 @@ class RetailerUploadServiceTest {
     @Test
     void csvInvalidMobile_rowFails() {
         String csv = "retailer_code,retailer_name,mobile\nRET001,Retailer One,INVALID\n";
-        MockMultipartFile file = csvFile(csv);
+        when(retailerRepository.existsByRetailerCode(anyString())).thenReturn(false);
 
-        when(retailerRepository.existsByTenantIdAndRetailerCode(eq(1L), anyString())).thenReturn(false);
-
-        UploadResult result = uploadService.upload(file);
+        UploadResult result = uploadService.upload(csvFile(csv));
 
         assertThat(result.totalRecords()).isEqualTo(1);
         assertThat(result.failedRecords()).isEqualTo(1);
@@ -121,8 +110,7 @@ class RetailerUploadServiceTest {
 
     @Test
     void emptyFile_throwsBusinessException() {
-        MockMultipartFile file = new MockMultipartFile("file", "retailers.csv",
-                "text/csv", new byte[0]);
+        MockMultipartFile file = new MockMultipartFile("file", "retailers.csv", "text/csv", new byte[0]);
 
         assertThatThrownBy(() -> uploadService.upload(file))
                 .isInstanceOf(BusinessException.class)
@@ -145,12 +133,10 @@ class RetailerUploadServiceTest {
                      "RET001,Good Retailer,9876543210\n" +
                      "RET002,Bad Mobile,NOTANUMBER\n" +
                      "RET003,Another Good,9876543212\n";
-        MockMultipartFile file = csvFile(csv);
-
-        when(retailerRepository.existsByTenantIdAndRetailerCode(eq(1L), anyString())).thenReturn(false);
+        when(retailerRepository.existsByRetailerCode(anyString())).thenReturn(false);
         when(retailerRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
-        UploadResult result = uploadService.upload(file);
+        UploadResult result = uploadService.upload(csvFile(csv));
 
         assertThat(result.totalRecords()).isEqualTo(3);
         assertThat(result.successRecords()).isEqualTo(2);

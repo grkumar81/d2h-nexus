@@ -7,9 +7,7 @@ import org.nexus.d2h.finance.FinancialTransactionRepository;
 import org.nexus.d2h.recharge.RechargeTransactionRepository;
 import org.nexus.d2h.retailer.Retailer;
 import org.nexus.d2h.retailer.RetailerRepository;
-import org.nexus.d2h.tenant.Tenant;
 import org.nexus.d2h.tenant.TenantContext;
-import org.nexus.d2h.tenant.TenantRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,22 +23,19 @@ public class ReportService {
     private final FinancialTransactionRepository financeRepo;
     private final RechargeTransactionRepository rechargeRepo;
     private final RetailerRepository retailerRepo;
-    private final TenantRepository tenantRepository;
 
     public ReportService(FinancialTransactionRepository financeRepo,
                          RechargeTransactionRepository rechargeRepo,
-                         RetailerRepository retailerRepo,
-                         TenantRepository tenantRepository) {
+                         RetailerRepository retailerRepo) {
         this.financeRepo = financeRepo;
         this.rechargeRepo = rechargeRepo;
         this.retailerRepo = retailerRepo;
-        this.tenantRepository = tenantRepository;
     }
 
     @Transactional(readOnly = true)
     public List<RetailerReportDto> allRetailerReport(LocalDate dateFrom, LocalDate dateTo) {
-        Long tenantId = resolveTenant().getId();
-        List<Object[]> rows = financeRepo.allRetailerReport(tenantId, dateFrom, dateTo);
+        ensureTenantContext();
+        List<Object[]> rows = financeRepo.allRetailerReport(dateFrom, dateTo);
         List<RetailerReportDto> result = new ArrayList<>(rows.size());
         for (Object[] row : rows) {
             BigDecimal boxSales = toBigDecimal(row[3]);
@@ -61,19 +56,19 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public RetailerReportDto retailerReport(Long retailerId, LocalDate dateFrom, LocalDate dateTo) {
-        Tenant tenant = resolveTenant();
-        Retailer retailer = retailerRepo.findByIdAndTenantId(retailerId, tenant.getId())
+        ensureTenantContext();
+        Retailer retailer = retailerRepo.findById(retailerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Retailer", retailerId));
 
         BigDecimal boxSales = dateFrom != null
-                ? financeRepo.sumBoxSalesByTenantAndDateRange(tenant.getId(), dateFrom, dateTo)
-                : financeRepo.sumBoxSalesByRetailer(tenant.getId(), retailerId);
+                ? financeRepo.sumBoxSalesByRetailer(retailerId)
+                : financeRepo.sumBoxSalesByRetailer(retailerId);
         BigDecimal received = dateFrom != null
-                ? financeRepo.sumPaymentsReceivedByTenantAndDateRange(tenant.getId(), dateFrom, dateTo)
-                : financeRepo.sumPaymentsReceivedByRetailer(tenant.getId(), retailerId);
+                ? financeRepo.sumPaymentsReceivedByRetailer(retailerId)
+                : financeRepo.sumPaymentsReceivedByRetailer(retailerId);
         BigDecimal recharge = dateFrom != null
-                ? financeRepo.sumRechargeByTenantAndDateRange(tenant.getId(), dateFrom, dateTo)
-                : financeRepo.sumRechargeByRetailer(tenant.getId(), retailerId);
+                ? financeRepo.sumRechargeByRetailer(retailerId)
+                : financeRepo.sumRechargeByRetailer(retailerId);
 
         return new RetailerReportDto(
                 retailer.getId(), retailer.getRetailerCode(), retailer.getRetailerName(),
@@ -83,33 +78,29 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public PeriodReportDto periodReport(LocalDate dateFrom, LocalDate dateTo) {
-        Long tenantId = resolveTenant().getId();
+        ensureTenantContext();
         LocalDate from = dateFrom != null ? dateFrom : LocalDate.of(2000, 1, 1);
         LocalDate to = dateTo != null ? dateTo : LocalDate.now();
 
-        BigDecimal boxSales = financeRepo.sumBoxSalesByTenantAndDateRange(tenantId, from, to);
-        BigDecimal received = financeRepo.sumPaymentsReceivedByTenantAndDateRange(tenantId, from, to);
-        BigDecimal recharge = financeRepo.sumRechargeByTenantAndDateRange(tenantId, from, to);
-        long count = financeRepo.countPostedByTenantAndDateRange(tenantId, from, to);
+        BigDecimal boxSales = financeRepo.sumBoxSalesByDateRange(from, to);
+        BigDecimal received = financeRepo.sumPaymentsReceivedByDateRange(from, to);
+        BigDecimal recharge = financeRepo.sumRechargeByDateRange(from, to);
+        long count = financeRepo.countPostedByDateRange(from, to);
 
         return new PeriodReportDto(dateFrom, dateTo, boxSales, received,
                 boxSales.subtract(received), recharge, count);
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
+    private void ensureTenantContext() {
+        String tenantCode = TenantContext.getCurrentTenant();
+        if (tenantCode == null || tenantCode.isBlank()) {
+            throw new BusinessException("TENANT_CONTEXT_MISSING", "Tenant context is not set");
+        }
+    }
 
     private BigDecimal toBigDecimal(Object value) {
         if (value == null) return BigDecimal.ZERO;
         if (value instanceof BigDecimal bd) return bd;
         return new BigDecimal(value.toString());
-    }
-
-    private Tenant resolveTenant() {
-        String tenantCode = TenantContext.getCurrentTenant();
-        if (tenantCode == null || tenantCode.isBlank()) {
-            throw new BusinessException("TENANT_CONTEXT_MISSING", "Tenant context is not set");
-        }
-        return tenantRepository.findByTenantCode(tenantCode)
-                .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantCode));
     }
 }

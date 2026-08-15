@@ -16,9 +16,6 @@ public class NotificationDelivery {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "tenant_id", nullable = false, updatable = false)
-    private Long tenantId;
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "outbox_event_id", nullable = false, updatable = false)
     private OutboxEvent outboxEvent;
