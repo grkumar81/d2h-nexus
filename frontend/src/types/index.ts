@@ -15,76 +15,89 @@ export interface Page<T> {
 export interface Retailer {
   id: number
   retailerCode: string
-  name: string
-  contactPerson: string
-  phone: string
-  email: string
-  address: string
-  city: string
-  state: string
-  pincode: string
-  active: boolean
+  retailerName: string
+  mobile: string | null
+  alternateMobile: string | null
+  email: string | null
+  address: string | null
+  city: string | null
+  state: string | null
+  pinCode: string | null
+  gstNumber: string | null
+  panNumber: string | null
+  status: string
+  joiningDate: string | null
   createdAt: string
 }
 export interface RetailerRequest {
   retailerCode: string
-  name: string
-  contactPerson?: string
-  phone?: string
+  retailerName: string
+  mobile?: string
   email?: string
   address?: string
   city?: string
   state?: string
-  pincode?: string
+  pinCode?: string
 }
 
 // ── Asset ─────────────────────────────────────────────────────────────────────
-export type AssetStatus = 'AVAILABLE' | 'ASSIGNED' | 'FAULTY' | 'RETIRED'
+export type AssetStatus = 'AVAILABLE' | 'ALLOCATED' | 'SOLD' | 'ACTIVATED' | 'RETURNED' | 'DAMAGED' | 'LOST'
 export interface Asset {
   id: number
   serialNumber: string
-  modelNumber: string
-  assetType: string
+  boxNumber: string | null
+  model: string | null
+  manufacturer: string | null
+  batch: string | null
+  purchaseDate: string | null
+  purchaseCost: number | null
   status: AssetStatus
   retailerId: number | null
   retailerCode: string | null
   retailerName: string | null
-  purchaseDate: string | null
-  warrantyExpiry: string | null
-  remarks: string | null
+  taggingDate: string | null
+  saleDate: string | null
+  activationDate: string | null
+  returnDate: string | null
   createdAt: string
 }
 export interface AssetRequest {
   serialNumber: string
-  modelNumber: string
-  assetType: string
-  status?: AssetStatus
+  boxNumber?: string
+  model?: string
+  manufacturer?: string
+  batch?: string
   purchaseDate?: string
-  warrantyExpiry?: string
-  remarks?: string
+  purchaseCost?: number
 }
 
 // ── Box Sale ──────────────────────────────────────────────────────────────────
-export type SaleStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED'
-export interface BoxSale {
+export type PaymentStatus = 'PENDING' | 'PAID' | 'PARTIAL'
+export interface SaleItem {
   id: number
-  retailerCode: string
-  retailerName: string
-  saleDate: string
+  assetId: number | null
+  serialNumber: string | null
   quantity: number
   unitPrice: number
+  totalPrice: number
+}
+export interface BoxSale {
+  id: number
+  retailerId: number
+  retailerCode: string
+  retailerName: string
+  transactionDate: string
   totalAmount: number
-  status: SaleStatus
-  invoiceNumber: string | null
+  paymentStatus: PaymentStatus
+  reference: string | null
   remarks: string | null
+  items: SaleItem[]
   createdAt: string
 }
 export interface BoxSaleRequest {
   retailerCode: string
-  saleDate: string
-  quantity: number
-  unitPrice: number
-  invoiceNumber?: string
+  transactionDate: string
+  items: { serialNumber?: string; quantity: number; unitPrice: number }[]
   remarks?: string
 }
 
@@ -98,6 +111,7 @@ export type TransactionSource = 'MANUAL' | 'UPLOAD' | 'SYSTEM'
 
 export interface FinancialTransaction {
   id: number
+  retailerId: number
   retailerCode: string
   retailerName: string
   transactionType: TransactionType
@@ -108,11 +122,12 @@ export interface FinancialTransaction {
   reference: string
   paymentReference: string | null
   description: string | null
+  remarks: string | null
   source: TransactionSource
   createdAt: string
 }
 export interface FinanceRequest {
-  retailerCode: string
+  retailerId: number
   transactionType: TransactionType
   transactionDate: string
   amount: number

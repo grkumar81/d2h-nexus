@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AgGridReact } from 'ag-grid-react'
-import type { ColDef, IServerSideDatasource } from 'ag-grid-community'
+import type { ColDef } from 'ag-grid-community'
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
 import { listUsers, createUser, updateUser, activateUser, deactivateUser, resetPassword } from '../../api/users'
 import type { UserDto, CreateUserRequest, UpdateUserRequest } from '../../types'
@@ -23,6 +23,7 @@ const EMPTY_CREATE: CreateUserRequest = { username: '', email: '', password: '',
 
 export default function UsersPage() {
   const gridRef = useRef<AgGridReact<UserDto>>(null)
+  const [rowData, setRowData] = useState<UserDto[]>([])
   const [showCreate, setShowCreate] = useState(false)
   const [editUser, setEditUser] = useState<UserDto | null>(null)
   const [form, setForm] = useState<CreateUserRequest>(EMPTY_CREATE)
@@ -30,49 +31,26 @@ export default function UsersPage() {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const datasource: IServerSideDatasource = useMemo(() => ({
-    getRows(params) {
-      const { startRow = 0, endRow = 20 } = params.request
-      const page = Math.floor(startRow / (endRow - startRow))
-      const size = endRow - startRow
-      listUsers(page, size)
-        .then(data => params.success({ rowData: data.content, rowCount: data.totalElements }))
-        .catch(() => params.fail())
-    },
-  }), [])
+  const fetchData = () =>
+    listUsers(0, 200).then(d => setRowData(d.content)).catch(() => {})
 
-  const refresh = () => gridRef.current?.api.refreshServerSide({ purge: true })
+  useEffect(() => { fetchData() }, [])
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
-    setSaving(true)
-    try {
-      await createUser(form)
-      setShowCreate(false)
-      setForm(EMPTY_CREATE)
-      refresh()
-    } catch (err: any) {
-      setError(err.response?.data?.message ?? 'Failed to create user')
-    } finally {
-      setSaving(false)
-    }
+    setError(''); setSaving(true)
+    try { await createUser(form); setShowCreate(false); setForm(EMPTY_CREATE); fetchData() }
+    catch (err: any) { setError(err.response?.data?.message ?? 'Failed to create user') }
+    finally { setSaving(false) }
   }
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editUser) return
-    setError('')
-    setSaving(true)
-    try {
-      await updateUser(editUser.id, editForm)
-      setEditUser(null)
-      refresh()
-    } catch (err: any) {
-      setError(err.response?.data?.message ?? 'Failed to update user')
-    } finally {
-      setSaving(false)
-    }
+    setError(''); setSaving(true)
+    try { await updateUser(editUser.id, editForm); setEditUser(null); fetchData() }
+    catch (err: any) { setError(err.response?.data?.message ?? 'Failed to update user') }
+    finally { setSaving(false) }
   }
 
   const handleRowAction = async (action: string, user: UserDto) => {
@@ -81,20 +59,17 @@ export default function UsersPage() {
         setEditForm({ fullName: user.fullName ?? '', phone: user.phone ?? '', roles: [...user.roles] })
         setEditUser(user)
       } else if (action === 'activate') {
-        await activateUser(user.id); refresh()
+        await activateUser(user.id); fetchData()
       } else if (action === 'deactivate') {
-        await deactivateUser(user.id); refresh()
+        await deactivateUser(user.id); fetchData()
       } else if (action === 'reset') {
         await resetPassword(user.id); alert('Password reset successfully')
       }
-    } catch (err: any) {
-      alert(err.response?.data?.message ?? 'Action failed')
-    }
+    } catch (err: any) { alert(err.response?.data?.message ?? 'Action failed') }
   }
 
-  const toggleRole = (role: string, current: string[], setter: (r: string[]) => void) => {
+  const toggleRole = (role: string, current: string[], setter: (r: string[]) => void) =>
     setter(current.includes(role) ? current.filter(r => r !== role) : [...current, role])
-  }
 
   return (
     <div className={styles.page}>
@@ -109,8 +84,8 @@ export default function UsersPage() {
           {['edit', 'activate', 'deactivate', 'reset'].map(action => (
             <button key={action} className={styles.actionBtn}
               onClick={() => {
-                const selected = gridRef.current?.api.getSelectedRows()[0]
-                if (selected) handleRowAction(action, selected)
+                const sel = gridRef.current?.api.getSelectedRows()[0]
+                if (sel) handleRowAction(action, sel)
               }}>
               {action === 'reset' ? 'Reset Password' : action.charAt(0).toUpperCase() + action.slice(1)}
             </button>
@@ -122,8 +97,7 @@ export default function UsersPage() {
         <AgGridReact<UserDto>
           ref={gridRef}
           columnDefs={COLS}
-          rowModelType="serverSide"
-          serverSideDatasource={datasource}
+          rowData={rowData}
           rowSelection="single"
           pagination
           paginationPageSize={20}
@@ -131,7 +105,6 @@ export default function UsersPage() {
         />
       </div>
 
-      {/* Create Modal */}
       {showCreate && (
         <div className={styles.overlay}>
           <div className={styles.modal}>
@@ -162,11 +135,10 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Edit Modal */}
       {editUser && (
         <div className={styles.overlay}>
           <div className={styles.modal}>
-            <h3>Edit User — {editUser.username}</h3>
+            <h3>Edit — {editUser.username}</h3>
             {error && <p className={styles.error}>{error}</p>}
             <form onSubmit={handleUpdate} className={styles.form}>
               <label>Full Name<input value={editForm.fullName} onChange={e => setEditForm(f => ({ ...f, fullName: e.target.value }))} /></label>

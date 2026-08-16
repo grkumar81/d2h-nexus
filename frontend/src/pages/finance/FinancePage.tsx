@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AgGridReact } from 'ag-grid-react'
-import type { ColDef, IServerSideDatasource } from 'ag-grid-community'
+import type { ColDef } from 'ag-grid-community'
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
 import {
   getTransactions, createTransaction, reverseTransaction,
@@ -26,12 +26,12 @@ const COLS: ColDef<FinancialTransaction>[] = [
 ]
 
 const EMPTY_FORM: FinanceRequest = {
-  retailerCode: '', transactionType: 'PAYMENT_RECEIVED',
-  transactionDate: '', amount: 0,
+  retailerId: 0, transactionType: 'PAYMENT_RECEIVED', transactionDate: '', amount: 0,
 }
 
 export default function FinancePage() {
   const gridRef = useRef<AgGridReact<FinancialTransaction>>(null)
+  const [rowData, setRowData] = useState<FinancialTransaction[]>([])
   const [selected, setSelected] = useState<FinancialTransaction | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<FinanceRequest>(EMPTY_FORM)
@@ -41,21 +41,16 @@ export default function FinancePage() {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
 
-  const datasource: IServerSideDatasource = useMemo(() => ({
-    getRows(params) {
-      const { startRow = 0, endRow = 20 } = params.request
-      const page = Math.floor(startRow / (endRow - startRow))
-      getTransactions({ page, size: endRow - startRow })
-        .then((d) => params.success({ rowData: d.content, rowCount: d.totalElements }))
-        .catch(() => params.fail())
-    },
-  }), [])
+  const fetchData = () =>
+    getTransactions({ page: 0, size: 200 }).then(d => setRowData(d.content)).catch(() => {})
 
-  const refresh = () => gridRef.current?.api.refreshServerSide({ purge: true })
+  useEffect(() => { fetchData() }, [])
+
+  const refresh = () => fetchData()
 
   const handleCreate = async () => {
-    if (!form.retailerCode || !form.transactionDate || form.amount <= 0) {
-      setError('Retailer code, date and a positive amount are required.'); return
+    if (!form.retailerId || !form.transactionDate || form.amount <= 0) {
+      setError('Retailer ID, date and a positive amount are required.'); return
     }
     try { await createTransaction(form); setForm(EMPTY_FORM); setShowForm(false); refresh() }
     catch { setError('Failed to create transaction.') }
@@ -106,14 +101,18 @@ export default function FinancePage() {
 
       {showForm && (
         <div className={styles.form}>
-          <input placeholder="Retailer code" value={form.retailerCode} onChange={(e) => setForm({ ...form, retailerCode: e.target.value })} />
+          <input type="number" placeholder="Retailer ID" min={1} value={form.retailerId || ''}
+            onChange={(e) => setForm({ ...form, retailerId: +e.target.value })} />
           <select value={form.transactionType} onChange={(e) => setForm({ ...form, transactionType: e.target.value as TransactionType })}>
             {TYPES.map((t) => <option key={t}>{t}</option>)}
           </select>
           <input type="date" value={form.transactionDate} onChange={(e) => setForm({ ...form, transactionDate: e.target.value })} />
-          <input type="number" placeholder="Amount" min={0} step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: +e.target.value })} />
-          <input placeholder="Reference (optional)" value={form.reference ?? ''} onChange={(e) => setForm({ ...form, reference: e.target.value })} />
-          <input placeholder="Description (optional)" value={form.description ?? ''} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <input type="number" placeholder="Amount" min={0} step="0.01" value={form.amount || ''}
+            onChange={(e) => setForm({ ...form, amount: +e.target.value })} />
+          <input placeholder="Reference (optional)" value={form.reference ?? ''}
+            onChange={(e) => setForm({ ...form, reference: e.target.value })} />
+          <input placeholder="Description (optional)" value={form.description ?? ''}
+            onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <button onClick={handleCreate}>Save</button>
           <button onClick={() => setShowForm(false)}>Cancel</button>
         </div>
@@ -122,8 +121,10 @@ export default function FinancePage() {
       {showAdjust && selected && (
         <div className={styles.form}>
           <strong>Adjust: {selected.reference}</strong>
-          <input type="number" placeholder="Adjustment amount" step="0.01" value={adjustForm.amount} onChange={(e) => setAdjustForm({ ...adjustForm, amount: +e.target.value })} />
-          <input placeholder="Description" value={adjustForm.description} onChange={(e) => setAdjustForm({ ...adjustForm, description: e.target.value })} />
+          <input type="number" placeholder="Adjustment amount" step="0.01" value={adjustForm.amount || ''}
+            onChange={(e) => setAdjustForm({ ...adjustForm, amount: +e.target.value })} />
+          <input placeholder="Description" value={adjustForm.description}
+            onChange={(e) => setAdjustForm({ ...adjustForm, description: e.target.value })} />
           <button onClick={handleAdjust}>Apply</button>
           <button onClick={() => setShowAdjust(false)}>Cancel</button>
         </div>
@@ -135,8 +136,7 @@ export default function FinancePage() {
         <AgGridReact<FinancialTransaction>
           ref={gridRef}
           columnDefs={COLS}
-          rowModelType="serverSide"
-          serverSideDatasource={datasource}
+          rowData={rowData}
           rowSelection="single"
           onRowClicked={(e) => { setSelected(e.data ?? null); setError(''); setShowAdjust(false) }}
           pagination

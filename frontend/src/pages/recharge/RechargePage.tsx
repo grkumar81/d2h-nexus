@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AgGridReact } from 'ag-grid-react'
-import type { ColDef, IServerSideDatasource } from 'ag-grid-community'
+import type { ColDef } from 'ag-grid-community'
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
 import {
   getRecharges, createRecharge, reverseRecharge,
@@ -25,7 +25,6 @@ const COLS: ColDef<RechargeTransaction>[] = [
   { field: 'rechargeStatus', headerName: 'Status', width: 110 },
   { field: 'reference', headerName: 'Reference', flex: 1 },
   { field: 'paymentMethod', headerName: 'Method', width: 120 },
-  { field: 'source', headerName: 'Source', width: 90 },
 ]
 
 const EMPTY_FORM: CreateRechargeRequest = {
@@ -34,6 +33,7 @@ const EMPTY_FORM: CreateRechargeRequest = {
 
 export default function RechargePage() {
   const gridRef = useRef<AgGridReact<RechargeTransaction>>(null)
+  const [rowData, setRowData] = useState<RechargeTransaction[]>([])
   const [selected, setSelected] = useState<RechargeTransaction | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<CreateRechargeRequest>(EMPTY_FORM)
@@ -42,46 +42,32 @@ export default function RechargePage() {
   const [summary, setSummary] = useState<RechargeSummary | null>(null)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    getRechargeSummary().then(setSummary).catch(() => {})
-  }, [])
-
-  const datasource: IServerSideDatasource = useMemo(() => ({
-    getRows(params) {
-      const { startRow = 0, endRow = 20 } = params.request
-      const page = Math.floor(startRow / (endRow - startRow))
-      getRecharges({ page, size: endRow - startRow })
-        .then((d) => params.success({ rowData: d.content, rowCount: d.totalElements }))
-        .catch(() => params.fail())
-    },
-  }), [])
-
-  const refresh = () => {
-    gridRef.current?.api.refreshServerSide({ purge: true })
+  const fetchData = () => {
+    getRecharges({ page: 0, size: 200 }).then(d => setRowData(d.content)).catch(() => {})
     getRechargeSummary().then(setSummary).catch(() => {})
   }
+
+  useEffect(() => { fetchData() }, [])
 
   const handleCreate = async () => {
     if (!form.retailerId || !form.rechargeDate || form.amount <= 0) {
       setError('Retailer ID, date and a positive amount are required.'); return
     }
-    try {
-      await createRecharge(form)
-      setForm(EMPTY_FORM); setShowForm(false); setError(''); refresh()
-    } catch { setError('Failed to create recharge.') }
+    try { await createRecharge(form); setForm(EMPTY_FORM); setShowForm(false); setError(''); fetchData() }
+    catch { setError('Failed to create recharge.') }
   }
 
   const handleReverse = async () => {
     if (!selected) return
     const reason = window.prompt('Reason for reversal (optional):') ?? undefined
-    try { await reverseRecharge(selected.id, reason); setSelected(null); refresh() }
+    try { await reverseRecharge(selected.id, reason); setSelected(null); fetchData() }
     catch { setError('Reversal failed.') }
   }
 
   const handleCancel = async () => {
     if (!selected) return
     const reason = window.prompt('Reason for cancellation (optional):') ?? undefined
-    try { await cancelRecharge(selected.id, reason); setSelected(null); refresh() }
+    try { await cancelRecharge(selected.id, reason); setSelected(null); fetchData() }
     catch { setError('Cancellation failed.') }
   }
 
@@ -89,7 +75,7 @@ export default function RechargePage() {
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true)
-    try { const r = await uploadRecharge(file); setUploadResult(r); refresh() }
+    try { const r = await uploadRecharge(file); setUploadResult(r); fetchData() }
     catch { setError('Upload failed.') }
     finally { setUploading(false); e.target.value = '' }
   }
@@ -101,14 +87,13 @@ export default function RechargePage() {
     <div className={styles.page}>
       {summary && (
         <div className={styles.kpis}>
-          <div className={styles.kpi}><h4>Total Recharge</h4><p>₹{summary.totalAmount?.toLocaleString()}</p></div>
+          <div className={styles.kpi}><h4>Total</h4><p>₹{summary.totalAmount?.toLocaleString()}</p></div>
           <div className={styles.kpi}><h4>Successful</h4><p>₹{summary.successAmount?.toLocaleString()}</p></div>
           <div className={styles.kpi}><h4>Failed</h4><p>₹{summary.failedAmount?.toLocaleString()}</p></div>
           <div className={styles.kpi}><h4>Reversed</h4><p>₹{summary.reversedAmount?.toLocaleString()}</p></div>
           <div className={styles.kpi}><h4>Count</h4><p>{summary.totalCount}</p></div>
         </div>
       )}
-
       <div className={styles.toolbar}>
         <h2>Recharge Transactions</h2>
         <div className={styles.actions}>
@@ -126,34 +111,18 @@ export default function RechargePage() {
 
       {showForm && (
         <div className={styles.form}>
-          <input
-            type="number" placeholder="Retailer ID" min={1}
-            value={form.retailerId || ''}
-            onChange={(e) => setForm({ ...form, retailerId: +e.target.value })}
-          />
-          <input
-            type="date" value={form.rechargeDate}
-            onChange={(e) => setForm({ ...form, rechargeDate: e.target.value })}
-          />
-          <input
-            type="number" placeholder="Amount" min={0.01} step="0.01"
-            value={form.amount || ''}
-            onChange={(e) => setForm({ ...form, amount: +e.target.value })}
-          />
-          <select
-            value={form.rechargeType}
-            onChange={(e) => setForm({ ...form, rechargeType: e.target.value as RechargeType })}
-          >
+          <input type="number" placeholder="Retailer ID" min={1} value={form.retailerId || ''}
+            onChange={(e) => setForm({ ...form, retailerId: +e.target.value })} />
+          <input type="date" value={form.rechargeDate}
+            onChange={(e) => setForm({ ...form, rechargeDate: e.target.value })} />
+          <input type="number" placeholder="Amount" min={0.01} step="0.01" value={form.amount || ''}
+            onChange={(e) => setForm({ ...form, amount: +e.target.value })} />
+          <select value={form.rechargeType}
+            onChange={(e) => setForm({ ...form, rechargeType: e.target.value as RechargeType })}>
             {TYPES.map((t) => <option key={t}>{t}</option>)}
           </select>
-          <input
-            placeholder="Reference (optional)" value={form.reference ?? ''}
-            onChange={(e) => setForm({ ...form, reference: e.target.value })}
-          />
-          <input
-            placeholder="Description (optional)" value={form.description ?? ''}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
+          <input placeholder="Reference (optional)" value={form.reference ?? ''}
+            onChange={(e) => setForm({ ...form, reference: e.target.value })} />
           <button onClick={handleCreate}>Save</button>
           <button onClick={() => setShowForm(false)}>Cancel</button>
         </div>
@@ -165,8 +134,7 @@ export default function RechargePage() {
         <AgGridReact<RechargeTransaction>
           ref={gridRef}
           columnDefs={COLS}
-          rowModelType="serverSide"
-          serverSideDatasource={datasource}
+          rowData={rowData}
           rowSelection="single"
           onRowClicked={(e) => { setSelected(e.data ?? null); setError('') }}
           pagination

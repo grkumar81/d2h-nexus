@@ -4,29 +4,30 @@ import type {
   FinancialTransaction, Page, RetailerFinanceSummary, UploadResult,
 } from '../types'
 
-export const getTransactions = (params: Record<string, unknown>) =>
-  api.get<Page<FinancialTransaction>>('/finance', { params }).then((r) => r.data)
+interface R<T> { data: T; success: boolean }
 
-export const getTransaction = (id: number) =>
-  api.get<FinancialTransaction>(`/finance/${id}`).then((r) => r.data)
+export const getTransactions = (params: Record<string, unknown>) =>
+  api.get<R<Page<FinancialTransaction>>>('/finance/transactions', { params }).then(r => r.data.data)
 
 export const createTransaction = (req: FinanceRequest) =>
-  api.post<FinancialTransaction>('/finance', req).then((r) => r.data)
+  api.post<R<FinancialTransaction>>('/finance/transactions', req).then(r => r.data.data)
 
-export const reverseTransaction = (id: number) =>
-  api.post<FinancialTransaction>(`/finance/${id}/reverse`).then((r) => r.data)
+export const reverseTransaction = (id: number, reason?: string) =>
+  api.post<R<FinancialTransaction>>(`/finance/transactions/${id}/reverse`, null, {
+    params: reason ? { reason } : {},
+  }).then(r => r.data.data)
 
 export const adjustTransaction = (id: number, req: AdjustRequest) =>
-  api.post<FinancialTransaction>(`/finance/${id}/adjust`, req).then((r) => r.data)
+  api.post<R<FinancialTransaction>>(`/finance/transactions/${id}/adjust`, req).then(r => r.data.data)
 
 export const getRetailerSummaries = () =>
-  api.get<RetailerFinanceSummary[]>('/finance/summary/retailers').then((r) => r.data)
+  api.get<R<RetailerFinanceSummary[]>>('/finance/summary/retailers').then(r => r.data.data)
 
 export const getTenantSummary = () =>
-  api.get<FinanceSummary>('/finance/summary/tenant').then((r) => r.data)
+  api.get<R<FinanceSummary>>('/finance/summary').then(r => r.data.data)
 
 export const uploadFinance = (file: File) => {
   const form = new FormData()
   form.append('file', file)
-  return api.post<UploadResult>('/finance/upload', form).then((r) => r.data)
+  return api.post<R<UploadResult>>('/finance/upload', form).then(r => r.data.data)
 }

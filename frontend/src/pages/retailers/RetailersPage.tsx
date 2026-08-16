@@ -1,41 +1,36 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AgGridReact } from 'ag-grid-react'
-import type { ColDef, IServerSideDatasource } from 'ag-grid-community'
+import type { ColDef } from 'ag-grid-community'
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
 import { getRetailers, uploadRetailers } from '../../api/retailers'
-import type { Retailer } from '../../types'
+import type { Retailer, UploadResult } from '../../types'
 import UploadResultPanel from '../../components/UploadResultPanel'
-import type { UploadResult } from '../../types'
 import styles from './Retailers.module.css'
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
 const COLS: ColDef<Retailer>[] = [
   { field: 'retailerCode', headerName: 'Code', width: 120 },
-  { field: 'name', headerName: 'Name', flex: 1 },
-  { field: 'contactPerson', headerName: 'Contact', flex: 1 },
-  { field: 'phone', headerName: 'Phone', width: 140 },
+  { field: 'retailerName', headerName: 'Name', flex: 1 },
+  { field: 'mobile', headerName: 'Phone', width: 140 },
   { field: 'city', headerName: 'City', width: 120 },
   { field: 'state', headerName: 'State', width: 100 },
-  { field: 'active', headerName: 'Active', width: 90, valueFormatter: (p) => p.value ? 'Yes' : 'No' },
+  { field: 'status', headerName: 'Status', width: 100 },
 ]
 
 export default function RetailersPage() {
   const gridRef = useRef<AgGridReact<Retailer>>(null)
+  const [rowData, setRowData] = useState<Retailer[]>([])
   const [search, setSearch] = useState('')
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null)
   const [uploading, setUploading] = useState(false)
 
-  const datasource: IServerSideDatasource = useMemo(() => ({
-    getRows(params) {
-      const { startRow = 0, endRow = 20 } = params.request
-      const page = Math.floor(startRow / (endRow - startRow))
-      const size = endRow - startRow
-      getRetailers({ page, size, search })
-        .then((data) => params.success({ rowData: data.content, rowCount: data.totalElements }))
-        .catch(() => params.fail())
-    },
-  }), [search])
+  const fetchData = (q: string) =>
+    getRetailers({ page: 0, size: 200, ...(q && { query: q }) })
+      .then(d => setRowData(d.content))
+      .catch(() => {})
+
+  useEffect(() => { fetchData(search) }, [search])
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -44,7 +39,7 @@ export default function RetailersPage() {
     try {
       const result = await uploadRetailers(file)
       setUploadResult(result)
-      gridRef.current?.api.refreshServerSide({ purge: true })
+      fetchData(search)
     } finally {
       setUploading(false)
       e.target.value = ''
@@ -59,7 +54,7 @@ export default function RetailersPage() {
           <input
             placeholder="Search…"
             value={search}
-            onChange={(e) => { setSearch(e.target.value); gridRef.current?.api.refreshServerSide({ purge: true }) }}
+            onChange={(e) => setSearch(e.target.value)}
             className={styles.search}
           />
           <label className={styles.uploadBtn}>
@@ -73,8 +68,7 @@ export default function RetailersPage() {
         <AgGridReact<Retailer>
           ref={gridRef}
           columnDefs={COLS}
-          rowModelType="serverSide"
-          serverSideDatasource={datasource}
+          rowData={rowData}
           pagination
           paginationPageSize={20}
           domLayout="autoHeight"
