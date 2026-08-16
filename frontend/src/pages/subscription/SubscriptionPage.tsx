@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AgGridReact } from 'ag-grid-react'
-import type { ColDef, IServerSideDatasource } from 'ag-grid-community'
+import type { ColDef } from 'ag-grid-community'
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
 import { listTenants, renewTenant, suspendTenant } from '../../api/platform'
 import type { PlatformTenantDto, SubscriptionStatus } from '../../types'
@@ -34,24 +34,19 @@ const COLS: ColDef<PlatformTenantDto>[] = [
 
 export default function SubscriptionPage() {
   const gridRef = useRef<AgGridReact<PlatformTenantDto>>(null)
+  const [rowData, setRowData] = useState<PlatformTenantDto[]>([])
   const [selected, setSelected] = useState<PlatformTenantDto | null>(null)
   const [showRenew, setShowRenew] = useState(false)
   const [renewForm, setRenewForm] = useState({ subscriptionExpiry: '', gracePeriodDays: '' })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const datasource: IServerSideDatasource = useMemo(() => ({
-    getRows(params) {
-      const { startRow = 0, endRow = 20 } = params.request
-      const page = Math.floor(startRow / (endRow - startRow))
-      const size = endRow - startRow
-      listTenants(page, size)
-        .then(data => params.success({ rowData: data.content, rowCount: data.totalElements }))
-        .catch(() => params.fail())
-    },
-  }), [])
+  const fetchData = () =>
+    listTenants(0, 200).then(data => setRowData(data.content)).catch(() => {})
 
-  const refresh = () => gridRef.current?.api.refreshServerSide({ purge: true })
+  useEffect(() => { fetchData() }, [])
+
+  const refresh = () => fetchData()
 
   const handleRenew = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -85,12 +80,10 @@ export default function SubscriptionPage() {
   }
 
   const openRenew = () => {
-    const sel = gridRef.current?.api.getSelectedRows()[0]
-    if (!sel) return
-    setSelected(sel)
+    if (!selected) return
     setRenewForm({
-      subscriptionExpiry: sel.subscriptionExpiry ?? '',
-      gracePeriodDays: String(sel.gracePeriodDays),
+      subscriptionExpiry: selected.subscriptionExpiry ?? '',
+      gracePeriodDays: String(selected.gracePeriodDays),
     })
     setError('')
     setShowRenew(true)
@@ -111,12 +104,12 @@ export default function SubscriptionPage() {
         <AgGridReact<PlatformTenantDto>
           ref={gridRef}
           columnDefs={COLS}
-          rowModelType="serverSide"
-          serverSideDatasource={datasource}
+          rowData={rowData}
           rowSelection="single"
           pagination
           paginationPageSize={20}
           domLayout="autoHeight"
+          onSelectionChanged={() => setSelected(gridRef.current?.api.getSelectedRows()[0] ?? null)}
         />
       </div>
 

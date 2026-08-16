@@ -13,11 +13,14 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 function loadAuth(): AuthState | null {
-  const token = localStorage.getItem('token')
-  const username = localStorage.getItem('username')
-  const tenantCode = localStorage.getItem('tenantCode')
-  const role = localStorage.getItem('role')
-  if (token && username && tenantCode && role) return { token, username, tenantCode, roles: JSON.parse(role) }
+  try {
+    const token = localStorage.getItem('token')
+    const username = localStorage.getItem('username')
+    const tenantCode = localStorage.getItem('tenantCode') // may be 'null' string for PLATFORM_ADMIN
+    const role = localStorage.getItem('role')
+    if (token && username && tenantCode !== null && role)
+      return { token, username, tenantCode: tenantCode === 'null' ? null! : tenantCode, roles: JSON.parse(role) }
+  } catch { /* ignore */ }
   return null
 }
 
@@ -28,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await apiLogin(req)
     localStorage.setItem('token', res.token)
     localStorage.setItem('username', res.username)
-    localStorage.setItem('tenantCode', res.tenantCode)
+    localStorage.setItem('tenantCode', res.tenantCode ?? 'null')
     localStorage.setItem('role', JSON.stringify(res.roles))
     setAuth({ token: res.token, username: res.username, tenantCode: res.tenantCode, roles: res.roles })
   }
