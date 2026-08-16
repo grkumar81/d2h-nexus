@@ -6,22 +6,22 @@ import type { SubscriptionStatusDto } from '../types'
 import styles from './Layout.module.css'
 
 const TENANT_NAV = [
-  { to: '/dashboard',           label: '📊 Dashboard',        section: 'Overview' },
-  { to: '/retailers',           label: '🏪 Retailers',         section: 'Operations' },
-  { to: '/assets',              label: '📦 Assets',            section: 'Operations' },
-  { to: '/box-sales',           label: '🛒 Box Sales',         section: 'Operations' },
-  { to: '/finance',             label: '💰 Finance',           section: 'Finance' },
-  { to: '/finance/outstanding', label: '⚠️ Outstanding',       section: 'Finance' },
-  { to: '/recharges',           label: '🔋 Recharge',          section: 'Finance' },
-  { to: '/reports',             label: '📈 Reports',           section: 'Reports' },
-  { to: '/users',               label: '👥 Users',             section: 'Settings' },
-  { to: '/notifications',       label: '🔔 Notifications',     section: 'Settings' },
-  { to: '/me/change-password',  label: '🔑 Change Password',   section: 'Settings' },
+  { to: '/dashboard',           icon: '📊', label: 'Dashboard',       section: 'Overview' },
+  { to: '/retailers',           icon: '🏪', label: 'Retailers',        section: 'Operations' },
+  { to: '/assets',              icon: '📦', label: 'Assets',           section: 'Operations' },
+  { to: '/box-sales',           icon: '🛒', label: 'Box Sales',        section: 'Operations' },
+  { to: '/finance',             icon: '💰', label: 'Finance',          section: 'Finance' },
+  { to: '/finance/outstanding', icon: '⚠️', label: 'Outstanding',      section: 'Finance' },
+  { to: '/recharges',           icon: '🔋', label: 'Recharge',         section: 'Finance' },
+  { to: '/reports',             icon: '📈', label: 'Reports',          section: 'Reports' },
+  { to: '/users',               icon: '👥', label: 'Users',            section: 'Settings' },
+  { to: '/notifications',       icon: '🔔', label: 'Notifications',    section: 'Settings' },
+  { to: '/me/change-password',  icon: '🔑', label: 'Change Password',  section: 'Settings' },
 ]
 
 const PLATFORM_NAV = [
-  { to: '/subscription',        label: '🏢 Tenants',           section: 'Platform' },
-  { to: '/me/change-password',  label: '🔑 Change Password',   section: 'Settings' },
+  { to: '/subscription',        icon: '🏢', label: 'Tenants',          section: 'Platform' },
+  { to: '/me/change-password',  icon: '🔑', label: 'Change Password',  section: 'Settings' },
 ]
 
 export default function Layout() {
@@ -29,11 +29,16 @@ export default function Layout() {
   const location = useLocation()
   const isPlatformAdmin = auth?.roles.includes('PLATFORM_ADMIN') ?? false
   const [subscription, setSubscription] = useState<SubscriptionStatusDto | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [collapsed, setCollapsed] = useState(false)
 
-  // Close sidebar on route change (mobile UX)
+  // On mobile start collapsed
   useEffect(() => {
-    if (window.innerWidth < 768) setSidebarOpen(false)
+    if (window.innerWidth < 768) setCollapsed(true)
+  }, [])
+
+  // Close sidebar on route change on mobile
+  useEffect(() => {
+    if (window.innerWidth < 768) setCollapsed(true)
   }, [location.pathname])
 
   useEffect(() => {
@@ -51,54 +56,52 @@ export default function Layout() {
 
   return (
     <div className={styles.shell}>
-      {/* Overlay backdrop — visible on mobile when sidebar is open */}
-      {sidebarOpen && (
-        <div className={styles.overlay} onClick={() => setSidebarOpen(false)} />
-      )}
+      {/* Mobile overlay */}
+      {!collapsed && <div className={styles.overlay} onClick={() => setCollapsed(true)} />}
 
-      <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : styles.sidebarClosed}`}>
+      <aside className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
+        {/* Brand */}
         <div className={styles.brand}>
           <div className={styles.brandIcon}>📡</div>
-          <span className={styles.brandText}>D2H</span>
-          {/* Close button inside sidebar (visible on mobile) */}
-          <button
-            className={styles.sidebarCloseBtn}
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Close menu"
-          >
-            ✕
-          </button>
+          {!collapsed && <span className={styles.brandText}>D2H</span>}
         </div>
+
+        {/* Nav */}
         <nav className={styles.navSection}>
           {sections.map(section => (
             <div key={section}>
-              <div className={styles.navLabel}>{section}</div>
+              {!collapsed && <div className={styles.navLabel}>{section}</div>}
+              {collapsed && <div className={styles.navDivider} />}
               {navItems.filter(n => n.section === section).map(n => (
                 <NavLink
                   key={n.to}
                   to={n.to}
-                  className={({ isActive }) => `${styles.link} ${isActive ? styles.active : ''}`}
+                  title={collapsed ? n.label : undefined}
+                  className={({ isActive }) =>
+                    `${styles.link} ${collapsed ? styles.linkCollapsed : ''} ${isActive ? styles.active : ''}`
+                  }
                 >
-                  {n.label}
+                  <span className={styles.linkIcon}>{n.icon}</span>
+                  {!collapsed && <span className={styles.linkLabel}>{n.label}</span>}
                 </NavLink>
               ))}
             </div>
           ))}
         </nav>
-        <div className={styles.sidebarFooter}>v1.0</div>
+
+        {!collapsed && <div className={styles.sidebarFooter}>v1.0</div>}
       </aside>
 
       <div className={styles.main}>
         <header className={styles.topbar}>
           <div className={styles.topbarLeft}>
-            {/* Hamburger button */}
             <button
               className={styles.hamburger}
-              onClick={() => setSidebarOpen(v => !v)}
+              onClick={() => setCollapsed(v => !v)}
               aria-label="Toggle menu"
-              title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              {sidebarOpen ? '◀' : '☰'}
+              {collapsed ? '☰' : '◀'}
             </button>
             {isPlatformAdmin
               ? <span className={styles.topbarBadge}>Platform Admin</span>
