@@ -163,8 +163,13 @@ public class UserManagementService {
 
     private org.nexus.d2h.tenant.Tenant resolveTenant() {
         String tenantCode = TenantContext.getCurrentTenant();
-        return tenantRepository.findByTenantCode(tenantCode)
-                .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantCode));
+        TenantContext.clear();
+        try {
+            return tenantRepository.findByTenantCode(tenantCode)
+                    .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantCode));
+        } finally {
+            TenantContext.setCurrentTenant(tenantCode);
+        }
     }
 
     private User findUserForTenant(Long userId, Long tenantId) {

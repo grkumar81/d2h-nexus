@@ -44,7 +44,16 @@ public class SubscriptionFilter extends OncePerRequestFilter {
             return;
         }
 
-        Tenant tenant = tenantRepository.findByTenantCode(tenantCode).orElse(null);
+        // TenantRepository uses platformDataSource which shares the same connection pool.
+        // Clear tenant context temporarily so TenantRoutingDataSource does not issue
+        // USE d2h_tenant_X on the connection used for the platform schema query.
+        TenantContext.clear();
+        Tenant tenant;
+        try {
+            tenant = tenantRepository.findByTenantCode(tenantCode).orElse(null);
+        } finally {
+            TenantContext.setCurrentTenant(tenantCode);
+        }
         if (tenant == null) {
             filterChain.doFilter(request, response);
             return;

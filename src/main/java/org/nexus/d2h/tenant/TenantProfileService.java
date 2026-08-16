@@ -44,8 +44,15 @@ public class TenantProfileService {
         if (tenantCode == null || tenantCode.isBlank()) {
             throw new BusinessException("TENANT_CONTEXT_MISSING", "Tenant context is not set");
         }
-        return tenantRepository.findByTenantCode(tenantCode)
-                .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantCode));
+        // Clear tenant context so TenantRoutingDataSource does not route the platform
+        // schema query to the tenant schema (both datasources share the same connection pool).
+        TenantContext.clear();
+        try {
+            return tenantRepository.findByTenantCode(tenantCode)
+                    .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantCode));
+        } finally {
+            TenantContext.setCurrentTenant(tenantCode);
+        }
     }
 
     private String currentUsername() {
