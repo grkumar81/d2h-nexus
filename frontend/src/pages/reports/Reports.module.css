@@ -2,7 +2,6 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding: 1rem;
 }
 
 .header {
@@ -13,23 +12,28 @@
   gap: 0.75rem;
 }
 
-.header h2 { margin: 0; font-size: 1.4rem; }
+.header h2 { margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--text-primary); }
 
 .tabs { display: flex; gap: 0.5rem; }
 
 .tab, .activeTab {
-  padding: 0.4rem 1rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  padding: 6px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.9rem;
-  background: #fff;
+  font-size: 0.875rem;
+  background: var(--white);
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
 }
 
+.tab:hover { background: var(--gray-50); color: var(--text-primary); }
+
 .activeTab {
-  background: #4f8ef7;
-  color: #fff;
-  border-color: #4f8ef7;
+  background: var(--blue-500);
+  color: var(--white);
+  border-color: var(--blue-500);
 }
 
 .filters {
@@ -43,47 +47,55 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
 }
 
 .filters input[type="date"] {
-  padding: 0.3rem 0.5rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 0.9rem;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  background: var(--white);
 }
 
 .btnPrimary {
-  padding: 0.4rem 1rem;
-  background: #4f8ef7;
-  color: #fff;
+  padding: 7px 16px;
+  background: var(--blue-500);
+  color: var(--white);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background var(--transition);
 }
 
+.btnPrimary:hover { background: var(--blue-600); }
 .btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btnSecondary {
-  padding: 0.4rem 1rem;
-  background: #fff;
-  color: #333;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  padding: 7px 16px;
+  background: var(--white);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background var(--transition);
 }
 
-.btnSecondary:hover { background: #f5f5f5; }
+.btnSecondary:hover { background: var(--gray-50); }
 
 .grid { width: 100%; min-height: 300px; }
 
 .periodCard {
-  background: #fff;
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .periodGrid {
@@ -96,33 +108,33 @@
 .kpiCard {
   flex: 1 1 140px;
   padding: 1rem;
-  background: #f9f9f9;
-  border-radius: 8px;
-  border-left: 4px solid #4f8ef7;
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--blue-400);
 }
 
-.kpiValue { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.25rem; }
-.kpiLabel { font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: 0.04em; }
+.kpiValue { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.2rem; color: var(--text-primary); }
+.kpiLabel { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
 
 .periodMeta {
   display: flex;
   gap: 1.5rem;
   font-size: 0.85rem;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .error {
   padding: 0.75rem 1rem;
-  background: #fff3f3;
-  border: 1px solid #f5c6c6;
-  border-radius: 4px;
-  color: #c0392b;
-  font-size: 0.9rem;
+  background: var(--danger-bg);
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  font-size: 0.875rem;
 }
 
 .empty {
   padding: 2rem;
   text-align: center;
-  color: #aaa;
-  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
 }

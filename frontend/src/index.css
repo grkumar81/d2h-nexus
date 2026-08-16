@@ -1,12 +1,187 @@
+/* ─── Theme Tokens ─────────────────────────────────────────────────────────── */
+:root {
+  /* Brand blues */
+  --blue-900: #0a1628;
+  --blue-800: #0d1f3c;
+  --blue-700: #0f2d5a;
+  --blue-600: #1a3f7a;
+  --blue-500: #1e56a0;
+  --blue-400: #2e6fd4;
+  --blue-300: #4f8ef7;
+  --blue-200: #93bbfc;
+  --blue-100: #dbeafe;
+  --blue-50:  #eff6ff;
+
+  /* Neutrals */
+  --gray-950: #0b0f1a;
+  --gray-900: #111827;
+  --gray-800: #1f2937;
+  --gray-700: #374151;
+  --gray-600: #4b5563;
+  --gray-500: #6b7280;
+  --gray-400: #9ca3af;
+  --gray-300: #d1d5db;
+  --gray-200: #e5e7eb;
+  --gray-100: #f3f4f6;
+  --gray-50:  #f9fafb;
+  --white:    #ffffff;
+
+  /* Semantic */
+  --success:      #16a34a;
+  --success-bg:   #dcfce7;
+  --warning:      #d97706;
+  --warning-bg:   #fef3c7;
+  --danger:       #dc2626;
+  --danger-bg:    #fee2e2;
+  --info:         var(--blue-400);
+  --info-bg:      var(--blue-100);
+
+  /* Surface */
+  --surface:        var(--white);
+  --surface-raised: var(--gray-50);
+  --border:         var(--gray-200);
+  --border-focus:   var(--blue-400);
+
+  /* Text */
+  --text-primary:   var(--gray-900);
+  --text-secondary: var(--gray-500);
+  --text-muted:     var(--gray-400);
+
+  /* Sidebar */
+  --sidebar-bg:       var(--blue-900);
+  --sidebar-border:   #1a2540;
+  --sidebar-text:     #94a3b8;
+  --sidebar-active:   var(--blue-300);
+  --sidebar-hover-bg: #131e35;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-lg: 0 10px 30px rgba(0,0,0,0.15);
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Transitions */
+  --transition: 150ms ease;
+}
+
+/* ─── Reset ────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
+
+/* ─── Scrollbars ───────────────────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-300) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 99px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
+}
+
+/* Sidebar gets a darker scrollbar to match its dark background */
+.sidebarScroll,
+[class*="navSection"] {
+  scrollbar-color: #1e3050 transparent;
+}
+
+[class*="navSection"]::-webkit-scrollbar-thumb {
+  background: #1e3050;
+}
+
+[class*="navSection"]::-webkit-scrollbar-thumb:hover {
+  background: #2a4070;
+}
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
-  background: #f5f5f5;
-  color: #222;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--gray-100);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* AG Grid community theme */
+/* ─── Shared utility classes ───────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition), opacity var(--transition), box-shadow var(--transition);
+  white-space: nowrap;
+}
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.btn-primary  { background: var(--blue-500); color: var(--white); }
+.btn-primary:hover:not(:disabled)  { background: var(--blue-600); box-shadow: 0 2px 8px rgba(30,86,160,0.35); }
+
+.btn-secondary { background: var(--white); color: var(--gray-700); border: 1px solid var(--border); }
+.btn-secondary:hover:not(:disabled) { background: var(--gray-50); }
+
+.btn-danger   { background: var(--danger); color: var(--white); }
+.btn-danger:hover:not(:disabled)   { background: #b91c1c; }
+
+.btn-ghost    { background: transparent; color: var(--blue-400); border: 1px solid var(--blue-300); }
+.btn-ghost:hover:not(:disabled)    { background: var(--blue-50); }
+
+/* ─── Form controls ────────────────────────────────────────────────────────── */
+input, select, textarea {
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  outline: none;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(79,142,247,0.15);
+}
+input::placeholder { color: var(--text-muted); }
+
+/* ─── AG Grid theme ────────────────────────────────────────────────────────── */
 @import 'ag-grid-community/styles/ag-grid.css';
 @import 'ag-grid-community/styles/ag-theme-alpine.css';
+
+.ag-theme-alpine {
+  --ag-background-color: var(--white);
+  --ag-header-background-color: var(--gray-50);
+  --ag-odd-row-background-color: var(--gray-50);
+  --ag-row-hover-color: var(--blue-50);
+  --ag-selected-row-background-color: var(--blue-100);
+  --ag-border-color: var(--border);
+  --ag-header-foreground-color: var(--gray-700);
+  --ag-foreground-color: var(--text-primary);
+  --ag-font-size: 13px;
+  --ag-row-height: 40px;
+  --ag-header-height: 40px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}

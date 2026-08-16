@@ -6,22 +6,22 @@ import type { SubscriptionStatusDto } from '../types'
 import styles from './Layout.module.css'
 
 const TENANT_NAV = [
-  { to: '/dashboard',          label: 'Dashboard' },
-  { to: '/retailers',          label: 'Retailers' },
-  { to: '/assets',             label: 'Assets' },
-  { to: '/box-sales',          label: 'Box Sales' },
-  { to: '/finance',            label: 'Finance' },
-  { to: '/finance/outstanding',label: 'Outstanding' },
-  { to: '/recharges',          label: 'Recharge' },
-  { to: '/reports',            label: 'Reports' },
-  { to: '/users',              label: 'Users' },
-  { to: '/notifications',      label: 'Notifications' },
-  { to: '/me/change-password', label: 'Change Password' },
+  { to: '/dashboard',           label: '📊 Dashboard',        section: 'Overview' },
+  { to: '/retailers',           label: '🏪 Retailers',         section: 'Operations' },
+  { to: '/assets',              label: '📦 Assets',            section: 'Operations' },
+  { to: '/box-sales',           label: '🛒 Box Sales',         section: 'Operations' },
+  { to: '/finance',             label: '💰 Finance',           section: 'Finance' },
+  { to: '/finance/outstanding', label: '⚠️ Outstanding',       section: 'Finance' },
+  { to: '/recharges',           label: '🔋 Recharge',          section: 'Finance' },
+  { to: '/reports',             label: '📈 Reports',           section: 'Reports' },
+  { to: '/users',               label: '👥 Users',             section: 'Settings' },
+  { to: '/notifications',       label: '🔔 Notifications',     section: 'Settings' },
+  { to: '/me/change-password',  label: '🔑 Change Password',   section: 'Settings' },
 ]
 
 const PLATFORM_NAV = [
-  { to: '/subscription',       label: 'Tenant Profile' },
-  { to: '/me/change-password', label: 'Change Password' },
+  { to: '/subscription',        label: '🏢 Tenants',           section: 'Platform' },
+  { to: '/me/change-password',  label: '🔑 Change Password',   section: 'Settings' },
 ]
 
 export default function Layout() {
@@ -37,27 +37,54 @@ export default function Layout() {
 
   const banner = subscription && ['EXPIRY_WARNING', 'GRACE_PERIOD', 'EXPIRED'].includes(subscription.subscriptionStatus)
     ? subscription : null
+
+  const navItems = isPlatformAdmin ? PLATFORM_NAV : TENANT_NAV
+  const sections = [...new Set(navItems.map(n => n.section))]
+  const initials = (auth?.username ?? '?').slice(0, 2).toUpperCase()
+
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
-        <div className={styles.brand}>D2H</div>
-        <nav>
-          {(isPlatformAdmin ? PLATFORM_NAV : TENANT_NAV).map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              className={({ isActive }) => `${styles.link} ${isActive ? styles.active : ''}`}
-            >
-              {n.label}
-            </NavLink>
+        <div className={styles.brand}>
+          <div className={styles.brandIcon}>📡</div>
+          <span className={styles.brandText}>D2H</span>
+        </div>
+        <nav className={styles.navSection}>
+          {sections.map(section => (
+            <div key={section}>
+              <div className={styles.navLabel}>{section}</div>
+              {navItems.filter(n => n.section === section).map(n => (
+                <NavLink
+                  key={n.to}
+                  to={n.to}
+                  className={({ isActive }) => `${styles.link} ${isActive ? styles.active : ''}`}
+                >
+                  {n.label}
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
+        <div className={styles.sidebarFooter}>v1.0</div>
       </aside>
+
       <div className={styles.main}>
         <header className={styles.topbar}>
-          <span>{isPlatformAdmin ? 'Platform Admin' : auth?.tenantCode} — {auth?.username}</span>
-          <button onClick={logout}>Logout</button>
+          <div className={styles.topbarLeft}>
+            {isPlatformAdmin
+              ? <span className={styles.topbarBadge}>Platform Admin</span>
+              : <><span>Tenant:</span><span className={styles.topbarBadge}>{auth?.tenantCode}</span></>
+            }
+          </div>
+          <div className={styles.topbarRight}>
+            <div className={styles.topbarUser}>
+              <div className={styles.topbarAvatar}>{initials}</div>
+              <span>{auth?.username}</span>
+            </div>
+            <button className={styles.logoutBtn} onClick={logout}>Logout</button>
+          </div>
         </header>
+
         {banner && (
           <div className={banner.subscriptionStatus === 'EXPIRED' ? styles.bannerError : styles.bannerWarn}>
             {banner.subscriptionStatus === 'EXPIRY_WARNING' && `⚠️ Subscription expires in ${banner.daysUntilExpiry} day(s). Please renew.`}
@@ -65,6 +92,7 @@ export default function Layout() {
             {banner.subscriptionStatus === 'EXPIRED' && '🔴 Subscription expired. Access is restricted. Contact your administrator.'}
           </div>
         )}
+
         <main className={styles.content}>
           <Outlet />
         </main>
