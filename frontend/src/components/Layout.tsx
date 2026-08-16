@@ -5,21 +5,22 @@ import { getSubscriptionStatus } from '../api/tenantProfile'
 import type { SubscriptionStatusDto } from '../types'
 import styles from './Layout.module.css'
 
-const NAV = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/retailers', label: 'Retailers' },
-  { to: '/assets', label: 'Assets' },
-  { to: '/box-sales', label: 'Box Sales' },
-  { to: '/finance', label: 'Finance' },
-  { to: '/finance/outstanding', label: 'Outstanding' },
-  { to: '/recharges', label: 'Recharge' },
-  { to: '/notifications', label: 'Notifications' },
-  { to: '/reports', label: 'Reports' },
-  { to: '/users', label: 'Users' },
-  { to: '/tenant/profile', label: 'Tenant Profile' },
-  { to: '/subscription', label: 'Subscriptions' },
-  { to: '/admin', label: 'Administration' },
-  { to: '/audit', label: 'Audit Log' },
+const TENANT_NAV = [
+  { to: '/dashboard',          label: 'Dashboard' },
+  { to: '/retailers',          label: 'Retailers' },
+  { to: '/assets',             label: 'Assets' },
+  { to: '/box-sales',          label: 'Box Sales' },
+  { to: '/finance',            label: 'Finance' },
+  { to: '/finance/outstanding',label: 'Outstanding' },
+  { to: '/recharges',          label: 'Recharge' },
+  { to: '/reports',            label: 'Reports' },
+  { to: '/users',              label: 'Users' },
+  { to: '/notifications',      label: 'Notifications' },
+  { to: '/me/change-password', label: 'Change Password' },
+]
+
+const PLATFORM_NAV = [
+  { to: '/subscription',       label: 'Tenant Profile' },
   { to: '/me/change-password', label: 'Change Password' },
 ]
 
@@ -41,7 +42,7 @@ export default function Layout() {
       <aside className={styles.sidebar}>
         <div className={styles.brand}>D2H</div>
         <nav>
-          {NAV.map((n) => (
+          {(isPlatformAdmin ? PLATFORM_NAV : TENANT_NAV).map((n) => (
             <NavLink
               key={n.to}
               to={n.to}
@@ -54,7 +55,7 @@ export default function Layout() {
       </aside>
       <div className={styles.main}>
         <header className={styles.topbar}>
-          <span>{auth?.tenantCode} — {auth?.username}</span>
+          <span>{isPlatformAdmin ? 'Platform Admin' : auth?.tenantCode} — {auth?.username}</span>
           <button onClick={logout}>Logout</button>
         </header>
         {banner && (

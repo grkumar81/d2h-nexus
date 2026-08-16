@@ -1,5 +1,5 @@
 import client from './client'
-import type { TenantProfile, UpdateTenantProfileRequest } from '../types'
+import type { TenantProfile, UpdateTenantProfileRequest, SubscriptionStatusDto } from '../types'
 
 export const getTenantProfile = () =>
   client.get<{ data: TenantProfile }>('/tenant/profile').then(r => r.data.data)
