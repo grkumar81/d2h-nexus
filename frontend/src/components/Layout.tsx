@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useEffect, useState } from 'react'
 import { getSubscriptionStatus } from '../api/tenantProfile'
@@ -26,8 +26,15 @@ const PLATFORM_NAV = [
 
 export default function Layout() {
   const { auth, logout } = useAuth()
+  const location = useLocation()
   const isPlatformAdmin = auth?.roles.includes('PLATFORM_ADMIN') ?? false
   const [subscription, setSubscription] = useState<SubscriptionStatusDto | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+
+  // Close sidebar on route change (mobile UX)
+  useEffect(() => {
+    if (window.innerWidth < 768) setSidebarOpen(false)
+  }, [location.pathname])
 
   useEffect(() => {
     if (!isPlatformAdmin && auth?.tenantCode) {
@@ -44,10 +51,23 @@ export default function Layout() {
 
   return (
     <div className={styles.shell}>
-      <aside className={styles.sidebar}>
+      {/* Overlay backdrop — visible on mobile when sidebar is open */}
+      {sidebarOpen && (
+        <div className={styles.overlay} onClick={() => setSidebarOpen(false)} />
+      )}
+
+      <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : styles.sidebarClosed}`}>
         <div className={styles.brand}>
           <div className={styles.brandIcon}>📡</div>
           <span className={styles.brandText}>D2H</span>
+          {/* Close button inside sidebar (visible on mobile) */}
+          <button
+            className={styles.sidebarCloseBtn}
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close menu"
+          >
+            ✕
+          </button>
         </div>
         <nav className={styles.navSection}>
           {sections.map(section => (
@@ -71,6 +91,15 @@ export default function Layout() {
       <div className={styles.main}>
         <header className={styles.topbar}>
           <div className={styles.topbarLeft}>
+            {/* Hamburger button */}
+            <button
+              className={styles.hamburger}
+              onClick={() => setSidebarOpen(v => !v)}
+              aria-label="Toggle menu"
+              title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            >
+              {sidebarOpen ? '◀' : '☰'}
+            </button>
             {isPlatformAdmin
               ? <span className={styles.topbarBadge}>Platform Admin</span>
               : <><span>Tenant:</span><span className={styles.topbarBadge}>{auth?.tenantCode}</span></>
