@@ -2,7 +2,6 @@ package org.nexus.d2h.tenant;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,12 +10,13 @@ import org.springframework.context.annotation.Primary;
 import javax.sql.DataSource;
 
 /**
- * Defines two datasources sharing one HikariCP connection pool:
+ * Two independent HikariCP pools:
  * <ul>
- *   <li>{@code platformDataSource} — connects to {@code d2h_platform}; used by platform JPA config.</li>
- *   <li>{@code tenantDataSource} — wraps the same pool; switches schema per request via USE statement.</li>
+ *   <li>{@code platformDataSource} — dedicated pool always on {@code d2h_platform}.</li>
+ *   <li>{@code tenantDataSource} — dedicated pool; TenantRoutingDataSource issues USE per request.</li>
  * </ul>
- * Spring Boot's DataSource auto-configuration is excluded in favour of this explicit config.
+ * Pools are intentionally separate so a USE statement on a tenant connection
+ * never contaminates a platform connection.
  */
 @Configuration
 public class DataSourceConfig {
@@ -51,30 +51,35 @@ public class DataSourceConfig {
     @Value("${spring.datasource.hikari.keepalive-time:60000}")
     private long keepaliveTime;
 
+    @Value("${app.tenant.schema-routing-enabled:true}")
+    private boolean schemaRoutingEnabled;
+
     @Primary
     @Bean(name = "platformDataSource", destroyMethod = "close")
     public HikariDataSource platformDataSource() {
+        return buildPool("D2H-Platform-Pool", maxPoolSize, minIdle);
+    }
+
+    @Bean(name = "tenantDataSource")
+    public DataSource tenantDataSource() {
+        HikariDataSource pool = buildPool("D2H-Tenant-Pool", maxPoolSize, minIdle);
+        return new TenantRoutingDataSource(pool, schemaRoutingEnabled);
+    }
+
+    private HikariDataSource buildPool(String poolName, int max, int idle) {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(url);
         config.setUsername(username);
         config.setPassword(password);
         config.setDriverClassName(driverClassName);
-        config.setMaximumPoolSize(maxPoolSize);
-        config.setMinimumIdle(minIdle);
+        config.setMaximumPoolSize(max);
+        config.setMinimumIdle(idle);
         config.setConnectionTimeout(connectionTimeout);
         config.setIdleTimeout(idleTimeout);
         config.setMaxLifetime(maxLifetime);
         config.setKeepaliveTime(keepaliveTime);
         config.setConnectionTestQuery("SELECT 1");
-        config.setPoolName("D2H-Platform-Pool");
+        config.setPoolName(poolName);
         return new HikariDataSource(config);
-    }
-
-    @Value("${app.tenant.schema-routing-enabled:true}")
-    private boolean schemaRoutingEnabled;
-
-    @Bean(name = "tenantDataSource")
-    public DataSource tenantDataSource(@Qualifier("platformDataSource") DataSource platformDataSource) {
-        return new TenantRoutingDataSource(platformDataSource, schemaRoutingEnabled);
     }
 }
