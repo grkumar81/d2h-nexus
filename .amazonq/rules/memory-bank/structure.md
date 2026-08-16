@@ -14,17 +14,25 @@ D2H/
 │       └── types/           # Shared TypeScript types (index.ts)
 ├── src/main/java/org/nexus/d2h/   # Backend — modular monolith
 │   ├── auth/                # JWT auth, SecurityConfig, JwtAuthFilter, D2HPrincipal
-│   ├── tenant/              # TenantContext (ThreadLocal), TenantContextFilter
+│   ├── tenant/              # TenantContext (ThreadLocal), TenantContextFilter, TenantRoutingDataSource,
+│   │                        #   TenantSchemaService, PlatformTenantController/Service, DataMigrationService
 │   ├── user/                # User entity, Role enum, UserRepository
 │   ├── retailer/            # Retailer CRUD, RetailerSpecification, RetailerService
 │   ├── asset/               # StbAsset, AssetService, AssetSpecification, history
 │   ├── boxsale/             # StbSale, StbSaleItem, BoxSaleService
 │   ├── finance/             # FinancialTransaction, FinanceService, Specification
-│   ├── upload/              # RetailerUploadService, FinanceUploadService (CSV/Excel)
+│   ├── recharge/            # RechargeTransaction, RechargeService, Specification
+│   ├── upload/              # RetailerUploadService, FinanceUploadService, RechargeUploadService (CSV/Excel)
+│   ├── notification/        # NotificationConfig, NotificationDelivery, OutboxEvent, NotificationService,
+│   │                        #   NotificationEventPublisher, NotificationProcessor
+│   ├── dashboard/           # DashboardService
+│   ├── report/              # ReportService
+│   ├── audit/               # AuditLog, AuditService
+│   ├── usermgmt/            # UserManagementService
 │   ├── common/              # ApiResponse, ErrorResponse, BaseEntity, GlobalExceptionHandler, TraceIdFilter
 │   └── D2HApplication.java
 ├── src/main/resources/
-│   ├── db/migration/        # Flyway versioned migrations (V1–V4)
+│   ├── db/migration/        # Flyway versioned migrations (V1–V8, T1–T6 tenant scripts)
 │   └── application.properties
 ├── src/test/java/org/nexus/d2h/   # Unit + slice tests mirroring main structure
 ├── compose.yaml             # Docker Compose (MySQL)
@@ -42,23 +50,34 @@ Each module is a flat package under `org.nexus.d2h.<module>` containing:
 - `<Entity>Specification.java` — JPA Criteria for dynamic filtering (where needed)
 
 ## Database Schema (Flyway migrations)
-| Migration | Tables |
+| Migration | Tables / Purpose |
 |---|---|
 | V1 | tenants, roles, users, user_roles, user_tenants, tenant_configurations |
-| V2 | retailers |
-| V3 | stb_assets, stb_asset_history |
-| V4 | financial_transactions, outbox_events |
+| V2 | retailers (shared schema — migrated to tenant schemas) |
+| V3 | stb_assets, stb_asset_history (shared schema — migrated to tenant schemas) |
+| V4 | financial_transactions, outbox_events (shared schema — migrated to tenant schemas) |
+| V8 | Adds `schema_name` to tenants; seeds PLATFORM_ADMIN role |
+| T1–T6 | Per-tenant schema scripts: retailers, stb_assets, stb_asset_history, financial_transactions, recharge_transactions, audit_logs, notification tables (no tenant_id columns) |
 
-All tenant business tables carry a `tenant_id` FK to `tenants`. Unique constraints enforce business identifiers (e.g., `uq_finance_tenant_reference`).
+Business tables in per-tenant schemas have NO `tenant_id` column — the schema itself is the tenant boundary.
+Platform schema (`d2h_platform`) holds: tenants, users, roles only.
 
 ## Tenant Isolation Architecture
 ```
 Request → JwtAuthFilter (validates JWT, sets SecurityContext)
         → TenantContextFilter (extracts tenantCode from D2HPrincipal, sets TenantContext ThreadLocal)
-        → Controller → Service (queries always include tenantId from TenantContext)
+        → TenantRoutingDataSource (issues USE d2h_tenant_{tenantCode} on each connection)
+        → Controller → Service (no tenantId params — schema routing enforces isolation)
         → TenantContextFilter finally block (clears TenantContext)
 ```
-Tenant identity is never trusted from the browser — it is always resolved from the authenticated JWT principal.
+Tenant identity is never trusted from the browser — always resolved from the authenticated JWT principal.
+PLATFORM_ADMIN users have null tenantCode; TenantContextFilter skips schema switching for them.
+Platform endpoints at `/api/v1/platform/**` require `PLATFORM_ADMIN` role (`@PreAuthorize`).
+
+### DataMigrationService
+Idempotent one-time migration: copies rows from `d2h_platform` shared tables (filtered by `tenant_id`) into per-tenant schemas.
+Exposed via `POST /api/v1/platform/tenants/migrate` and `POST /api/v1/platform/tenants/{id}/migrate`.
+Skips tables that already have data in the target schema.
 
 ## Frontend Architecture
 - Vite + React 19 + TypeScript 5
@@ -77,3 +96,10 @@ Tenant identity is never trusted from the browser — it is always resolved from
 | GlobalExceptionHandler | common/ | Maps all exceptions to ErrorResponse; never exposes stack traces |
 | TraceIdFilter | common/ | Injects traceId into MDC for structured logging |
 | TenantContext | tenant/ | ThreadLocal tenant isolation; cleared after every request |
+| TenantRoutingDataSource | tenant/ | Issues `USE d2h_tenant_{code}` per connection; falls back to platform DS when tenantCode is null |
+| DataSourceConfig | tenant/ | `platformDataSource` (HikariCP) + `tenantDataSource`; `app.tenant.schema-routing-enabled` controls routing |
+| PlatformJpaConfig | tenant/ | JPA config scanning tenant/user packages; `@Primary` |
+| TenantJpaConfig | tenant/ | JPA config scanning all business packages; uses tenantDataSource |
+| TenantSchemaService | tenant/ | Runs T1–T6 scripts on new tenant schema creation |
+| PlatformTenantController | tenant/ | CRUD + approve/suspend/deactivate + migrate endpoints for PLATFORM_ADMIN |
+| DataMigrationService | tenant/ | Idempotent copy from shared schema to per-tenant schemas |

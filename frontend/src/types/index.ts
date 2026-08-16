@@ -312,6 +312,7 @@ export interface UserDto {
   username: string
   email: string
   fullName: string | null
+  phone: string | null
   status: string
   roles: string[]
   createdAt: string
@@ -321,7 +322,27 @@ export interface CreateUserRequest {
   email: string
   password: string
   fullName?: string
+  phone?: string
   roles: string[]
+}
+export interface UpdateUserRequest {
+  fullName?: string
+  phone?: string
+  roles: string[]
+}
+
+// ── Tenant Profile ────────────────────────────────────────────────────────────
+export interface TenantProfile {
+  tenantCode: string
+  name: string
+  email: string | null
+  phone: string | null
+  status: string
+}
+export interface UpdateTenantProfileRequest {
+  name: string
+  email?: string
+  phone?: string
 }
 
 // ── Audit ───────────────────────────────────────────────────────────────────────────

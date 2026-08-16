@@ -10,6 +10,7 @@ public record UserDto(
         String username,
         String email,
         String fullName,
+        String phone,
         String status,
         Set<String> roles,
         Instant createdAt
@@ -20,6 +21,7 @@ public record UserDto(
                 user.getUsername(),
                 user.getEmail(),
                 user.getFullName(),
+                user.getPhone(),
                 user.getStatus().name(),
                 Set.copyOf(user.getRoles()),
                 user.getCreatedAt()

@@ -6,36 +6,37 @@
 All Spring beans use constructor injection — never field injection.
 ```java
 public FinanceService(FinancialTransactionRepository txRepository,
-                      TenantRepository tenantRepository,
                       RetailerRepository retailerRepository) {
     this.txRepository = txRepository;
     ...
 }
 ```
+Services no longer inject `TenantRepository` — tenant isolation is handled by schema routing.
 
-### Tenant Resolution (every service method that touches business data)
-Always resolve tenant from `TenantContext` (set by `TenantContextFilter` from JWT). Never accept a tenant ID from the request body.
+### Tenant Context Check (services that require an active tenant)
+Services validate that a tenant context is set but do NOT resolve the Tenant entity or pass tenantId to queries.
+Schema routing (TenantRoutingDataSource) enforces isolation automatically.
 ```java
-private Tenant resolveTenant() {
+private void ensureTenantContext() {
     String tenantCode = TenantContext.getCurrentTenant();
     if (tenantCode == null || tenantCode.isBlank()) {
         throw new BusinessException("TENANT_CONTEXT_MISSING", "Tenant context is not set");
     }
-    return tenantRepository.findByTenantCode(tenantCode)
-            .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantCode));
 }
 ```
+PLATFORM_ADMIN endpoints skip this check and operate on the platform datasource.
 
-### Tenant-Scoped Repository Lookups
-All entity lookups include `tenantId` to enforce isolation:
+### Repository Lookups (schema-routed — no tenantId param)
+All entity lookups use plain `findById()` — the active schema already scopes to the correct tenant:
 ```java
-// Correct — tenant-scoped
-txRepository.findByIdAndTenantId(id, tenantId)
+// Correct — schema routing enforces tenant isolation
+txRepository.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("FinancialTransaction", id));
 
-retailerRepository.findByIdAndTenantId(retailerId, tenantId)
+retailerRepository.findById(retailerId)
         .orElseThrow(() -> new ResourceNotFoundException("Retailer", retailerId));
 ```
+Never add `tenantId` parameters to repository methods or query methods.
 
 ### BusinessException Pattern
 Use `BusinessException(code, message)` for domain rule violations (maps to HTTP 422):
@@ -77,7 +78,7 @@ original.setReversedBy(savedReversal);
 ### Reference Deduplication
 Unique references are enforced at both DB level (`UNIQUE` constraint) and service level:
 ```java
-if (txRepository.existsByTenantIdAndReference(tenantId, ref)) {
+if (txRepository.existsByReference(ref)) {
     throw new BusinessException("DUPLICATE_REFERENCE", "...");
 }
 ```
@@ -99,6 +100,16 @@ if (batch.size() >= BATCH_SIZE) {
     batch.clear();
 }
 ```
+
+### AuditService
+- Uses `REQUIRES_NEW` propagation — audit writes never roll back with the calling transaction
+- Swallows exceptions silently — audit failure must not affect business operations
+- `record(String entityType, String entityId, String action, String details, String ipAddress)` — no tenantId param
+- Audit logs are stored in the tenant schema (schema routing handles isolation)
+
+### NotificationEventPublisher
+- `publish(NotificationEventType eventType, String aggregateId, Map<String, Object> payload)` — no tenantId param
+- Notification failure must never roll back a committed financial transaction (outbox pattern)
 
 ### Security Configuration
 - Stateless JWT — `SessionCreationPolicy.STATELESS`, CSRF disabled
@@ -177,16 +188,18 @@ Each page/component has a co-located `.module.css` file. Import as `import style
 ## Database Patterns
 
 ### Tenant Isolation in Schema
-Every tenant business table has `tenant_id BIGINT NOT NULL` with a FK to `tenants(id)`. Composite unique constraints include `tenant_id`:
+Tenant business tables in per-tenant schemas (`d2h_tenant_{code}`) have NO `tenant_id` column.
+The schema itself is the tenant boundary — enforced by `TenantRoutingDataSource`.
+Unique constraints are simple (no tenant_id prefix):
 ```sql
-CONSTRAINT uq_finance_tenant_reference UNIQUE (tenant_id, reference)
+CONSTRAINT uq_finance_reference UNIQUE (reference)
 ```
 
 ### Index Strategy
-Composite indexes always lead with `tenant_id`:
+Indexes do not need to lead with `tenant_id` (no longer present in business tables):
 ```sql
-CREATE INDEX idx_finance_tenant_retailer ON financial_transactions (tenant_id, retailer_id);
-CREATE INDEX idx_finance_tenant_date     ON financial_transactions (tenant_id, transaction_date);
+CREATE INDEX idx_finance_retailer ON financial_transactions (retailer_id);
+CREATE INDEX idx_finance_date     ON financial_transactions (transaction_date);
 ```
 
 ### Migration Naming
@@ -217,7 +230,9 @@ class AuthControllerTest {
 ### Test Configuration
 - H2 in-memory with `MODE=MySQL` for all tests
 - Flyway disabled; Hibernate `create-drop` manages schema
+- `app.tenant.schema-routing-enabled=false` — H2 does not support `USE` statements
 - JWT secret provided in `src/test/resources/application.properties`
+- `@MockitoBean` used for service/repository dependencies in controller slice tests
 
 ### Naming Convention
 Test methods: `methodName_condition_expectedOutcome`

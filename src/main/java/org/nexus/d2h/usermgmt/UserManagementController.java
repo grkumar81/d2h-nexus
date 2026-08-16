@@ -37,6 +37,20 @@ public class UserManagementController {
         return ResponseEntity.ok(ApiResponse.ok(userManagementService.listForTenant(pageable)));
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('TENANT_ADMIN')")
+    public ResponseEntity<ApiResponse<UserDto>> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(userManagementService.getById(id)));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('TENANT_ADMIN')")
+    public ResponseEntity<ApiResponse<UserDto>> update(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateUserRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(userManagementService.update(id, request)));
+    }
+
     @PostMapping("/{id}/activate")
     @PreAuthorize("hasRole('TENANT_ADMIN')")
     public ResponseEntity<ApiResponse<UserDto>> activate(@PathVariable Long id) {
@@ -47,6 +61,13 @@ public class UserManagementController {
     @PreAuthorize("hasRole('TENANT_ADMIN')")
     public ResponseEntity<ApiResponse<UserDto>> deactivate(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.ok(userManagementService.deactivate(id)));
+    }
+
+    @PostMapping("/{id}/reset-password")
+    @PreAuthorize("hasRole('TENANT_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@PathVariable Long id) {
+        userManagementService.resetPassword(id);
+        return ResponseEntity.ok(ApiResponse.ok(null, "Password reset successfully"));
     }
 
     @PostMapping("/me/change-password")

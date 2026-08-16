@@ -6,6 +6,8 @@ public record PlatformTenantDto(
         Long id,
         String tenantCode,
         String name,
+        String email,
+        String phone,
         String schemaName,
         TenantStatus status,
         Instant createdAt,
@@ -14,6 +16,7 @@ public record PlatformTenantDto(
     static PlatformTenantDto from(Tenant t) {
         return new PlatformTenantDto(
                 t.getId(), t.getTenantCode(), t.getName(),
+                t.getEmail(), t.getPhone(),
                 t.getSchemaName(), t.getStatus(),
                 t.getCreatedAt(), t.getUpdatedAt()
         );

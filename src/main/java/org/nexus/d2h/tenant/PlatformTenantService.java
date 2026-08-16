@@ -32,6 +32,8 @@ public class PlatformTenantService {
         Tenant tenant = new Tenant();
         tenant.setTenantCode(code);
         tenant.setName(request.name().trim());
+        tenant.setEmail(request.email());
+        tenant.setPhone(request.phone());
         tenant.setSchemaName("d2h_tenant_" + code.toLowerCase());
         tenant.setStatus(TenantStatus.PENDING);
 
@@ -55,6 +57,8 @@ public class PlatformTenantService {
     public PlatformTenantDto update(Long id, UpdateTenantRequest request) {
         Tenant tenant = findById(id);
         tenant.setName(request.name().trim());
+        tenant.setEmail(request.email());
+        tenant.setPhone(request.phone());
         Tenant saved = tenantRepository.save(tenant);
         log.info("Tenant updated: id={} code={} by={}", saved.getId(),
                 saved.getTenantCode(), currentUsername());

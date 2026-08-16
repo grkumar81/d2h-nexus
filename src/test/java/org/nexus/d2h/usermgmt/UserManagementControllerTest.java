@@ -44,7 +44,7 @@ class UserManagementControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
                                 new CreateUserRequest("newuser", "new@example.com",
-                                        "password123", "New User", Set.of("READ_ONLY")))))
+                                        "password123", "New User", null, Set.of("READ_ONLY")))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.username").value("alice"));
@@ -60,7 +60,7 @@ class UserManagementControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
                                 new CreateUserRequest("alice", "alice@example.com",
-                                        "password123", null, Set.of("READ_ONLY")))))
+                                        "password123", null, null, Set.of("READ_ONLY")))))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("DUPLICATE_USERNAME"));
     }
@@ -119,6 +119,6 @@ class UserManagementControllerTest {
 
     private UserDto sampleUser() {
         return new UserDto(5L, "alice", "alice@example.com", "Alice",
-                "ACTIVE", Set.of("TENANT_ADMIN"), Instant.now());
+                null, "ACTIVE", Set.of("TENANT_ADMIN"), Instant.now());
     }
 }

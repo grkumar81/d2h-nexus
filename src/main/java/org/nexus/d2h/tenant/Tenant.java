@@ -17,6 +17,12 @@ public class Tenant extends BaseEntity {
     @Column(nullable = false, length = 255)
     private String name;
 
+    @Column(length = 255)
+    private String email;
+
+    @Column(length = 30)
+    private String phone;
+
     @Column(name = "schema_name", nullable = false, unique = true, length = 64)
     private String schemaName;
 

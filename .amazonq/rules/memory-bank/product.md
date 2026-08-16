@@ -4,6 +4,7 @@
 Multi-tenant web application for D2H distributors to manage their full business operations: retailers, STB/D2H assets, box sales, financial transactions, recharge, bulk uploads, dashboards, reports, audit history, and notifications (email + WhatsApp).
 
 ## Target Users
+- **Platform Admin** — cross-tenant platform management (PLATFORM_ADMIN role)
 - **Tenant Admin** — full access per distributor tenant
 - **Finance User** — financial transactions, uploads, reports
 - **Operations User** — assets, box sales, retailer management
@@ -23,7 +24,7 @@ Multi-tenant web application for D2H distributors to manage their full business 
 |---|---|
 | auth | JWT login, Spring Security, role enforcement |
 | tenant | Multi-tenant isolation, tenant lifecycle |
-| user | User management, roles (TENANT_ADMIN, FINANCE_USER, OPERATIONS_USER, READ_ONLY) |
+| user | User management, roles (PLATFORM_ADMIN, TENANT_ADMIN, FINANCE_USER, OPERATIONS_USER, READ_ONLY) |
 | retailer | Retailer CRUD, search, status management, CSV/Excel upload |
 | asset | STB asset inventory, lifecycle (AVAILABLE→ALLOCATED→SOLD→ACTIVATED→RETURNED), history |
 | boxsale | Box sale transactions linking assets to retailers |
@@ -42,13 +43,14 @@ Multi-tenant web application for D2H distributors to manage their full business 
 - Finalized transactions are never physically deleted — use adjustments/reversals
 - Notification failure must never roll back a committed financial transaction
 
-## Implementation Phases (current state: Phases 1–4 implemented)
+## Implementation Phases (current state: Phases 1–4 + Platform Admin + Schema Routing implemented)
 1. Foundation, tenant, auth, MySQL, migrations, React foundation
 2. Retailer + upload
 3. Assets + box sales
 4. Finance + audit
-5. Recharge *(pending)*
-6. Email/WhatsApp/outbox/retry *(pending)*
-7. Dashboard *(pending)*
-8. Reports/exports *(pending)*
-9. Security/performance/production hardening *(pending)*
+5. Recharge
+6. Email/WhatsApp/outbox/retry
+7. Dashboard
+8. Reports/exports
+9. Platform Admin role + per-tenant schema routing (schema-per-tenant isolation, DataMigrationService)
+10. Security/performance/production hardening *(pending)*

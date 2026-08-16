@@ -12,8 +12,11 @@ const NAV = [
   { to: '/recharges', label: 'Recharge' },
   { to: '/notifications', label: 'Notifications' },
   { to: '/reports', label: 'Reports' },
+  { to: '/users', label: 'Users' },
+  { to: '/tenant/profile', label: 'Tenant Profile' },
   { to: '/admin', label: 'Administration' },
   { to: '/audit', label: 'Audit Log' },
+  { to: '/me/change-password', label: 'Change Password' },
 ]
 
 export default function Layout() {

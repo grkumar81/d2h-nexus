@@ -14,6 +14,9 @@ import DashboardPage from './pages/dashboard/DashboardPage'
 import ReportsPage from './pages/reports/ReportsPage'
 import AdminPage from './pages/admin/AdminPage'
 import AuditPage from './pages/audit/AuditPage'
+import UsersPage from './pages/users/UsersPage'
+import TenantProfilePage from './pages/profile/TenantProfilePage'
+import ChangePasswordPage from './pages/profile/ChangePasswordPage'
 
 export default function App() {
   return (
@@ -40,6 +43,9 @@ export default function App() {
             <Route path="reports" element={<ReportsPage />} />
             <Route path="admin" element={<AdminPage />} />
             <Route path="audit" element={<AuditPage />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="tenant/profile" element={<TenantProfilePage />} />
+            <Route path="me/change-password" element={<ChangePasswordPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
