@@ -66,3 +66,6 @@
   padding: 24px;
   background: #f5f5f5;
 }
+
+.bannerWarn { background: #fff3e0; color: #e65100; padding: 10px 20px; font-size: 13px; border-bottom: 1px solid #ffcc80; }
+.bannerError { background: #ffebee; color: #c62828; padding: 10px 20px; font-size: 13px; border-bottom: 1px solid #ef9a9a; }

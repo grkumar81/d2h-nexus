@@ -19,7 +19,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AuditController.class)
-class AuditControllerTest {
+class AuditControllerTest extends org.nexus.d2h.BaseControllerTest {
 
     @Autowired MockMvc mockMvc;
 

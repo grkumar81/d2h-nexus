@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(UserManagementController.class)
-class UserManagementControllerTest {
+class UserManagementControllerTest extends org.nexus.d2h.BaseControllerTest {
 
     @Autowired MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();

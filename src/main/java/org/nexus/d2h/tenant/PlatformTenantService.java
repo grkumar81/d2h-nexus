@@ -59,6 +59,12 @@ public class PlatformTenantService {
         tenant.setName(request.name().trim());
         tenant.setEmail(request.email());
         tenant.setPhone(request.phone());
+        if (request.subscriptionExpiry() != null) {
+            tenant.setSubscriptionExpiry(request.subscriptionExpiry());
+        }
+        if (request.gracePeriodDays() != null) {
+            tenant.setGracePeriodDays(request.gracePeriodDays());
+        }
         Tenant saved = tenantRepository.save(tenant);
         log.info("Tenant updated: id={} code={} by={}", saved.getId(),
                 saved.getTenantCode(), currentUsername());
@@ -118,6 +124,23 @@ public class PlatformTenantService {
     }
 
     // ── private helpers ───────────────────────────────────────────────────────
+
+    @Transactional
+    public PlatformTenantDto renew(Long id, RenewTenantRequest request) {
+        Tenant tenant = findById(id);
+        tenant.setSubscriptionExpiry(request.subscriptionExpiry());
+        if (request.gracePeriodDays() != null) {
+            tenant.setGracePeriodDays(request.gracePeriodDays());
+        }
+        tenant.setLastExpiryNotifiedAt(null);
+        if (tenant.getStatus() == TenantStatus.SUSPENDED) {
+            tenant.setStatus(TenantStatus.ACTIVE);
+        }
+        Tenant saved = tenantRepository.save(tenant);
+        log.info("Tenant renewed: id={} code={} expiry={} by={}",
+                saved.getId(), saved.getTenantCode(), request.subscriptionExpiry(), currentUsername());
+        return PlatformTenantDto.from(saved);
+    }
 
     public Tenant findTenantById(Long id) {
         return findById(id);

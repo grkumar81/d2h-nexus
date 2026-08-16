@@ -23,6 +23,7 @@ public class NotificationTemplateService {
             case RECHARGE_CREATED             -> "Recharge Recorded — " + retailer;
             case RECHARGE_REVERSED            -> "Recharge Reversed — " + retailer;
             case RECHARGE_UPLOAD_COMPLETED    -> "Recharge Upload Completed";
+            case SUBSCRIPTION_EXPIRY_WARNING  -> "Subscription Expiry Warning — " + str(data, "tenantName", "Tenant");
         };
     }
 
@@ -35,6 +36,7 @@ public class NotificationTemplateService {
             case RECHARGE_CREATED,
                  RECHARGE_REVERSED            -> buildRechargeBody(data);
             case RECHARGE_UPLOAD_COMPLETED    -> buildUploadBody(data, "Recharge");
+            case SUBSCRIPTION_EXPIRY_WARNING  -> buildSubscriptionBody(data);
         };
     }
 
@@ -47,6 +49,7 @@ public class NotificationTemplateService {
             case RECHARGE_CREATED,
                  RECHARGE_REVERSED            -> buildRechargeWhatsApp(data);
             case RECHARGE_UPLOAD_COMPLETED    -> buildUploadWhatsApp(data, "Recharge");
+            case SUBSCRIPTION_EXPIRY_WARNING  -> buildSubscriptionWhatsApp(data);
         };
     }
 
@@ -171,6 +174,33 @@ public class NotificationTemplateService {
                 str(d, "successCount", "0"),
                 str(d, "totalRows", "0"),
                 str(d, "totalAmount", "0")
+        );
+    }
+
+    private String buildSubscriptionBody(Map<String, Object> d) {
+        return """
+                D2H Distributor Management — Subscription Expiry Warning
+                ==========================================================
+                Tenant:         %s
+                Status:         %s
+                Days Until Expiry: %s
+                Grace Days Remaining: %s
+
+                Please renew your subscription to avoid service interruption.
+                """.formatted(
+                str(d, "tenantName", "-"),
+                str(d, "subscriptionStatus", "-"),
+                str(d, "daysUntilExpiry", "0"),
+                str(d, "graceDaysRemaining", "0")
+        );
+    }
+
+    private String buildSubscriptionWhatsApp(Map<String, Object> d) {
+        return "*D2H Subscription Warning* — %s: %s. Days left: %s. Grace: %s days.".formatted(
+                str(d, "tenantName", "-"),
+                str(d, "subscriptionStatus", "-"),
+                str(d, "daysUntilExpiry", "0"),
+                str(d, "graceDaysRemaining", "0")
         );
     }
 

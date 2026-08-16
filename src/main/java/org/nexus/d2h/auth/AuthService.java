@@ -1,6 +1,11 @@
 package org.nexus.d2h.auth;
 
 import lombok.extern.slf4j.Slf4j;
+import org.nexus.d2h.notification.NotificationEventPublisher;
+import org.nexus.d2h.notification.NotificationEventType;
+import org.nexus.d2h.tenant.SubscriptionState;
+import org.nexus.d2h.tenant.Tenant;
+import org.nexus.d2h.tenant.TenantRepository;
 import org.nexus.d2h.user.User;
 import org.nexus.d2h.user.UserRepository;
 import org.nexus.d2h.user.UserStatus;
@@ -12,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -24,15 +31,21 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
+    private final TenantRepository tenantRepository;
+    private final NotificationEventPublisher eventPublisher;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
-                       JwtProperties jwtProperties) {
+                       JwtProperties jwtProperties,
+                       TenantRepository tenantRepository,
+                       NotificationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.jwtProperties = jwtProperties;
+        this.tenantRepository = tenantRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -67,7 +80,34 @@ public class AuthService {
         String token = jwtService.generateToken(user.getId(), user.getUsername(), tenantCode, user.getRoles());
         log.info("User '{}' logged in: tenantCode={} roles={}", user.getUsername(), tenantCode, user.getRoles());
 
+        // Fire subscription expiry notification once per 24h if in grace/expired state
+        if (!isPlatformAdmin && tenantCode != null) {
+            fireExpiryNotificationIfNeeded(tenantCode);
+        }
+
         return new LoginResponse(token, user.getUsername(), tenantCode, user.getRoles(), jwtProperties.getExpirationMs());
+    }
+
+    private void fireExpiryNotificationIfNeeded(String tenantCode) {
+        try {
+            Tenant tenant = tenantRepository.findByTenantCode(tenantCode).orElse(null);
+            if (tenant == null) return;
+            SubscriptionState state = SubscriptionState.compute(tenant);
+            if (!state.requiresNotification()) return;
+            // Throttle — only notify once per 24 hours
+            if (tenant.getLastExpiryNotifiedAt() != null &&
+                    ChronoUnit.HOURS.between(tenant.getLastExpiryNotifiedAt(), Instant.now()) < 24) return;
+            tenant.setLastExpiryNotifiedAt(Instant.now());
+            tenantRepository.save(tenant);
+            eventPublisher.publish(NotificationEventType.SUBSCRIPTION_EXPIRY_WARNING,
+                    tenant.getTenantCode(),
+                    Map.of("tenantName", tenant.getName(),
+                           "subscriptionStatus", state.status().name(),
+                           "daysUntilExpiry", state.daysUntilExpiry(),
+                           "graceDaysRemaining", state.graceDaysRemaining()));
+        } catch (Exception e) {
+            log.warn("Failed to fire expiry notification for tenant={}: {}", tenantCode, e.getMessage());
+        }
     }
 
     private boolean isLocked(User user) {

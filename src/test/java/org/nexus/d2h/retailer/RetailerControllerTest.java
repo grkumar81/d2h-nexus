@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Authorization and unauthenticated access are tested in SecurityConfigTest.
  */
 @WebMvcTest(RetailerController.class)
-class RetailerControllerTest {
+class RetailerControllerTest extends org.nexus.d2h.BaseControllerTest {
 
     @Autowired MockMvc mockMvc;
 

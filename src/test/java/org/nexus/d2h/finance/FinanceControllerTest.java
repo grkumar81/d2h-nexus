@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(FinanceController.class)
-class FinanceControllerTest {
+class FinanceControllerTest extends org.nexus.d2h.BaseControllerTest {
 
     @Autowired MockMvc mockMvc;
 

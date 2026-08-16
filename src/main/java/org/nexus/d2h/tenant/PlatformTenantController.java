@@ -68,6 +68,13 @@ public class PlatformTenantController {
         return ResponseEntity.ok(ApiResponse.ok(service.deactivate(id)));
     }
 
+    @PostMapping("/{id}/renew")
+    public ResponseEntity<ApiResponse<PlatformTenantDto>> renew(
+            @PathVariable Long id,
+            @Valid @RequestBody RenewTenantRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(service.renew(id, request)));
+    }
+
     @PostMapping("/migrate")
     public ResponseEntity<ApiResponse<String>> migrateAll() {
         dataMigrationService.migrateAll();

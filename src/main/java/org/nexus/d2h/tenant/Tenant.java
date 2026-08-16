@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.Setter;
 import org.nexus.d2h.common.BaseEntity;
 
+import java.time.Instant;
+
 @Getter
 @Setter
 @Entity
@@ -22,6 +24,15 @@ public class Tenant extends BaseEntity {
 
     @Column(length = 30)
     private String phone;
+
+    @Column(name = "subscription_expiry")
+    private java.time.LocalDate subscriptionExpiry;
+
+    @Column(name = "grace_period_days", nullable = false)
+    private int gracePeriodDays = 30;
+
+    @Column(name = "last_expiry_notified_at")
+    private Instant lastExpiryNotifiedAt;
 
     @Column(name = "schema_name", nullable = false, unique = true, length = 64)
     private String schemaName;

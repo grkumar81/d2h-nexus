@@ -345,6 +345,32 @@ export interface UpdateTenantProfileRequest {
   phone?: string
 }
 
+// ── Subscription ──────────────────────────────────────────────────────────────
+export type SubscriptionStatus = 'ACTIVE' | 'ACTIVE_WITH_EXPIRY' | 'EXPIRY_WARNING' | 'GRACE_PERIOD' | 'EXPIRED'
+export interface SubscriptionStatusDto {
+  subscriptionStatus: SubscriptionStatus
+  subscriptionExpiry: string | null
+  daysUntilExpiry: number
+  gracePeriodDays: number
+  graceDaysRemaining: number
+}
+export interface PlatformTenantDto {
+  id: number
+  tenantCode: string
+  name: string
+  email: string | null
+  phone: string | null
+  schemaName: string
+  status: string
+  subscriptionStatus: SubscriptionStatus
+  subscriptionExpiry: string | null
+  daysUntilExpiry: number
+  gracePeriodDays: number
+  graceDaysRemaining: number
+  createdAt: string
+  updatedAt: string
+}
+
 // ── Audit ───────────────────────────────────────────────────────────────────────────
 export interface AuditLog {
   id: number

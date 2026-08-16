@@ -6,3 +6,6 @@ export const getTenantProfile = () =>
 
 export const updateTenantProfile = (req: UpdateTenantProfileRequest) =>
   client.put<{ data: TenantProfile }>('/tenant/profile', req).then(r => r.data.data)
+
+export const getSubscriptionStatus = () =>
+  client.get<{ data: SubscriptionStatusDto }>('/tenant/profile/subscription').then(r => r.data.data)

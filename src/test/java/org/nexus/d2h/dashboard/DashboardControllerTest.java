@@ -18,7 +18,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(DashboardController.class)
-class DashboardControllerTest {
+class DashboardControllerTest extends org.nexus.d2h.BaseControllerTest {
 
     @Autowired MockMvc mockMvc;
 

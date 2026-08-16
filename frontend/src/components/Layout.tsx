@@ -1,5 +1,8 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useEffect, useState } from 'react'
+import { getSubscriptionStatus } from '../api/tenantProfile'
+import type { SubscriptionStatusDto } from '../types'
 import styles from './Layout.module.css'
 
 const NAV = [
@@ -14,6 +17,7 @@ const NAV = [
   { to: '/reports', label: 'Reports' },
   { to: '/users', label: 'Users' },
   { to: '/tenant/profile', label: 'Tenant Profile' },
+  { to: '/subscription', label: 'Subscriptions' },
   { to: '/admin', label: 'Administration' },
   { to: '/audit', label: 'Audit Log' },
   { to: '/me/change-password', label: 'Change Password' },
@@ -21,6 +25,17 @@ const NAV = [
 
 export default function Layout() {
   const { auth, logout } = useAuth()
+  const isPlatformAdmin = auth?.roles.includes('PLATFORM_ADMIN') ?? false
+  const [subscription, setSubscription] = useState<SubscriptionStatusDto | null>(null)
+
+  useEffect(() => {
+    if (!isPlatformAdmin && auth?.tenantCode) {
+      getSubscriptionStatus().then(setSubscription).catch(() => {})
+    }
+  }, [auth?.tenantCode, isPlatformAdmin])
+
+  const banner = subscription && ['EXPIRY_WARNING', 'GRACE_PERIOD', 'EXPIRED'].includes(subscription.subscriptionStatus)
+    ? subscription : null
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
@@ -42,6 +57,13 @@ export default function Layout() {
           <span>{auth?.tenantCode} — {auth?.username}</span>
           <button onClick={logout}>Logout</button>
         </header>
+        {banner && (
+          <div className={banner.subscriptionStatus === 'EXPIRED' ? styles.bannerError : styles.bannerWarn}>
+            {banner.subscriptionStatus === 'EXPIRY_WARNING' && `⚠️ Subscription expires in ${banner.daysUntilExpiry} day(s). Please renew.`}
+            {banner.subscriptionStatus === 'GRACE_PERIOD' && `🟠 Subscription expired. Grace period: ${banner.graceDaysRemaining} day(s) remaining.`}
+            {banner.subscriptionStatus === 'EXPIRED' && '🔴 Subscription expired. Access is restricted. Contact your administrator.'}
+          </div>
+        )}
         <main className={styles.content}>
           <Outlet />
         </main>

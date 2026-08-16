@@ -22,6 +22,12 @@ public class TenantProfileController {
         return ResponseEntity.ok(ApiResponse.ok(tenantProfileService.getProfile()));
     }
 
+    @GetMapping("/subscription")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<SubscriptionStatusDto>> getSubscription() {
+        return ResponseEntity.ok(ApiResponse.ok(tenantProfileService.getSubscriptionStatus()));
+    }
+
     @PutMapping
     @PreAuthorize("hasRole('TENANT_ADMIN')")
     public ResponseEntity<ApiResponse<TenantProfileDto>> updateProfile(

@@ -13,7 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(AuthController.class)
 @Import(SecurityConfig.class)
-class SecurityConfigTest {
+class SecurityConfigTest extends org.nexus.d2h.BaseControllerTest {
 
     @Autowired
     private MockMvc mockMvc;

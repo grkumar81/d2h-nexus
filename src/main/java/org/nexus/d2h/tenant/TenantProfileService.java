@@ -22,6 +22,12 @@ public class TenantProfileService {
         return TenantProfileDto.from(resolveTenant());
     }
 
+    @Transactional(readOnly = true)
+    public SubscriptionStatusDto getSubscriptionStatus() {
+        Tenant tenant = resolveTenant();
+        return SubscriptionStatusDto.from(SubscriptionState.compute(tenant));
+    }
+
     @Transactional
     public TenantProfileDto updateProfile(UpdateTenantProfileRequest request) {
         Tenant tenant = resolveTenant();

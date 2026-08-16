@@ -17,6 +17,7 @@ import AuditPage from './pages/audit/AuditPage'
 import UsersPage from './pages/users/UsersPage'
 import TenantProfilePage from './pages/profile/TenantProfilePage'
 import ChangePasswordPage from './pages/profile/ChangePasswordPage'
+import SubscriptionPage from './pages/subscription/SubscriptionPage'
 
 export default function App() {
   return (
@@ -46,6 +47,7 @@ export default function App() {
             <Route path="users" element={<UsersPage />} />
             <Route path="tenant/profile" element={<TenantProfilePage />} />
             <Route path="me/change-password" element={<ChangePasswordPage />} />
+            <Route path="subscription" element={<SubscriptionPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
