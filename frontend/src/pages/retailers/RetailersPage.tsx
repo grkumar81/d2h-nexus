@@ -59,6 +59,7 @@ export default function RetailersPage() {
   const [search, setSearch] = useState('')
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [uploadMenuOpen, setUploadMenuOpen] = useState(false)
   const [showFormat, setShowFormat] = useState(false)
 
   // Add / Edit modal
@@ -78,6 +79,14 @@ export default function RetailersPage() {
       .catch(() => {})
 
   useEffect(() => { fetchData(search) }, [search])
+
+  // Close upload dropdown on outside click
+  useEffect(() => {
+    if (!uploadMenuOpen) return
+    const close = () => setUploadMenuOpen(false)
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [uploadMenuOpen])
 
   const openAdd = () => { setForm(EMPTY); setEditing(null); setFormError(''); setModal('add') }
 
@@ -241,16 +250,33 @@ export default function RetailersPage() {
             className={styles.search}
           />
           <button className={styles.btnPrimary} onClick={openAdd}>+ Add Retailer</button>
-          <label className={styles.uploadBtn}>
-            {uploading ? 'Uploading…' : '⬆ Upload CSV/Excel'}
-            <input type="file" accept=".csv,.xlsx,.xls" onChange={handleUpload} hidden />
-          </label>
-          <button className={styles.btnFormat} onClick={() => setShowFormat(v => !v)}>
-            {showFormat ? 'Hide Format' : '? Upload Format'}
-          </button>
-          <button className={styles.btnDownload} onClick={downloadTemplate}>
-            ⬇ Download Template
-          </button>
+
+          {/* Upload dropdown */}
+          <div className={styles.uploadMenu}>
+            <button
+              className={styles.btnUploadMenu}
+              onClick={() => setUploadMenuOpen(v => !v)}
+            >
+              ⬆ Upload ▾
+            </button>
+            {uploadMenuOpen && (
+              <div className={styles.uploadDropdown} onClick={() => setUploadMenuOpen(false)}>
+                <label className={styles.dropdownItem}>
+                  <span>⬆</span>
+                  <span>{uploading ? 'Uploading…' : 'Upload CSV / Excel'}</span>
+                  <input type="file" accept=".csv,.xlsx,.xls" onChange={handleUpload} hidden />
+                </label>
+                <button className={styles.dropdownItem} onClick={downloadTemplate}>
+                  <span>⬇</span>
+                  <span>Download Template</span>
+                </button>
+                <button className={styles.dropdownItem} onClick={() => setShowFormat(v => !v)}>
+                  <span>📋</span>
+                  <span>{showFormat ? 'Hide Format Guide' : 'View Format Guide'}</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
