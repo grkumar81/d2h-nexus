@@ -78,6 +78,21 @@
 
 .btnFormat:hover { background: var(--blue-50); }
 
+.btnDownload {
+  padding: 7px 14px;
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid #86efac;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background var(--transition);
+  white-space: nowrap;
+}
+
+.btnDownload:hover { background: #bbf7d0; }
+
 /* ── Row action buttons ── */
 .btnEdit {
   padding: 3px 10px;

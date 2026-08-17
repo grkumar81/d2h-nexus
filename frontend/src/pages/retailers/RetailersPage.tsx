@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import type { ColDef, ICellRendererParams } from 'ag-grid-community'
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
+import * as XLSX from 'xlsx'
 import {
   getRetailers, createRetailer, updateRetailer,
   activateRetailer, deactivateRetailer, uploadRetailers,
@@ -147,6 +148,39 @@ export default function RetailersPage() {
   const set = (k: keyof RetailerRequest) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
 
+  const downloadTemplate = () => {
+    const headers = [
+      'retailer_code', 'retailer_name', 'mobile', 'alternate_mobile',
+      'email', 'address', 'city', 'state', 'pin_code', 'gst_number',
+      'pan_number', 'joining_date',
+    ]
+    const sample = [
+      'RET001', 'Sharma Electronics', '9876543210', '9876543211',
+      'sharma@email.com', '123 Main St', 'Mumbai', 'Maharashtra',
+      '400001', '27AAPFU0939F1ZV', 'AAPFU0939F', '2024-01-15',
+    ]
+    const notes = [
+      '* Required', '* Required', '* Required (10 digits)', 'Optional (10 digits)',
+      'Optional', 'Optional', 'Optional', 'Optional',
+      'Optional (6 digits)', 'Optional (15-char GST)', 'Optional (10-char PAN)', 'Optional (YYYY-MM-DD)',
+    ]
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, sample, notes])
+
+    // Column widths
+    ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 4, 18) }))
+
+    // Style header row bold (SheetJS CE supports basic cell props)
+    headers.forEach((_, i) => {
+      const cell = XLSX.utils.encode_cell({ r: 0, c: i })
+      if (ws[cell]) ws[cell].s = { font: { bold: true }, fill: { fgColor: { rgb: '1E56A0' } } }
+    })
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Retailers')
+    XLSX.writeFile(wb, 'retailer_upload_template.xlsx')
+  }
+
   const COLS: ColDef<Retailer>[] = [
     { field: 'retailerCode', headerName: 'Code', width: 110 },
     { field: 'retailerName', headerName: 'Name', flex: 1, minWidth: 140 },
@@ -201,6 +235,9 @@ export default function RetailersPage() {
           </label>
           <button className={styles.btnFormat} onClick={() => setShowFormat(v => !v)}>
             {showFormat ? 'Hide Format' : '? Upload Format'}
+          </button>
+          <button className={styles.btnDownload} onClick={downloadTemplate}>
+            ⬇ Download Template
           </button>
         </div>
       </div>
