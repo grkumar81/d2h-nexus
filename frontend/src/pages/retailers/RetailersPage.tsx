@@ -83,7 +83,10 @@ export default function RetailersPage() {
   // Close upload dropdown on outside click
   useEffect(() => {
     if (!uploadMenuOpen) return
-    const close = () => setUploadMenuOpen(false)
+    const close = (e: MouseEvent) => {
+      const menu = document.getElementById('upload-menu')
+      if (menu && !menu.contains(e.target as Node)) setUploadMenuOpen(false)
+    }
     document.addEventListener('mousedown', close)
     return () => document.removeEventListener('mousedown', close)
   }, [uploadMenuOpen])
@@ -252,7 +255,7 @@ export default function RetailersPage() {
           <button className={styles.btnPrimary} onClick={openAdd}>+ Add Retailer</button>
 
           {/* Upload dropdown */}
-          <div className={styles.uploadMenu}>
+          <div className={styles.uploadMenu} id="upload-menu">
             <button
               className={styles.btnUploadMenu}
               onClick={() => setUploadMenuOpen(v => !v)}
@@ -260,17 +263,17 @@ export default function RetailersPage() {
               ⬆ Upload ▾
             </button>
             {uploadMenuOpen && (
-              <div className={styles.uploadDropdown} onClick={() => setUploadMenuOpen(false)}>
+              <div className={styles.uploadDropdown}>
                 <label className={styles.dropdownItem}>
                   <span>⬆</span>
                   <span>{uploading ? 'Uploading…' : 'Upload CSV / Excel'}</span>
-                  <input type="file" accept=".csv,.xlsx,.xls" onChange={handleUpload} hidden />
+                  <input type="file" accept=".csv,.xlsx,.xls" onChange={(e) => { setUploadMenuOpen(false); handleUpload(e) }} hidden />
                 </label>
-                <button className={styles.dropdownItem} onClick={downloadTemplate}>
+                <button className={styles.dropdownItem} onClick={() => { setUploadMenuOpen(false); downloadTemplate() }}>
                   <span>⬇</span>
                   <span>Download Template</span>
                 </button>
-                <button className={styles.dropdownItem} onClick={() => setShowFormat(v => !v)}>
+                <button className={styles.dropdownItem} onClick={() => { setUploadMenuOpen(false); setShowFormat(v => !v) }}>
                   <span>📋</span>
                   <span>{showFormat ? 'Hide Format Guide' : 'View Format Guide'}</span>
                 </button>
