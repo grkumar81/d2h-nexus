@@ -286,7 +286,10 @@ export default function RetailersPage() {
       {/* Upload format info */}
       {showFormat && (
         <div className={styles.formatPanel}>
-          <div className={styles.formatTitle}>📋 Upload File Format (CSV or Excel)</div>
+          <div className={styles.formatPanelHeader}>
+            <div className={styles.formatTitle}>📋 Upload File Format (CSV or Excel)</div>
+            <button className={styles.formatCloseBtn} onClick={() => setShowFormat(false)}>✕ Hide</button>
+          </div>
           <p className={styles.formatNote}>
             Required columns: <strong>retailer_code</strong>, <strong>retailer_name</strong>, <strong>mobile</strong>.
             All other columns are optional.

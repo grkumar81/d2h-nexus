@@ -207,11 +207,31 @@
   box-shadow: var(--shadow-sm);
 }
 
+.formatPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.formatCloseBtn {
+  padding: 3px 12px;
+  background: var(--gray-100);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: background var(--transition), color var(--transition);
+}
+
+.formatCloseBtn:hover { background: var(--danger-bg); color: var(--danger); border-color: #fca5a5; }
+
 .formatTitle {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 8px;
 }
 
 .formatNote {
