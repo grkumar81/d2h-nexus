@@ -289,3 +289,108 @@
 
 .modalActions button[type="submit"]:hover { background: var(--blue-600); }
 .modalActions button[type="submit"]:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Error box (multi-line field errors) ── */
+.errorBox {
+  background: var(--danger-bg);
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.errorBox p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--danger);
+  line-height: 1.5;
+}
+
+/* ── Confirm dialog ── */
+.confirmModal {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 32px 28px 24px;
+  width: 420px;
+  max-width: 95vw;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.confirmIconDanger,
+.confirmIconSuccess {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.confirmModal h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.confirmModal p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.confirmActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  justify-content: center;
+}
+
+.btnCancel {
+  padding: 8px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.btnCancel:hover:not(:disabled) { background: var(--gray-50); }
+.btnCancel:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btnConfirmDanger {
+  padding: 8px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--danger);
+  color: var(--white);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.btnConfirmDanger:hover:not(:disabled) { background: #b91c1c; }
+.btnConfirmDanger:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btnConfirmSuccess {
+  padding: 8px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--success);
+  color: var(--white);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.btnConfirmSuccess:hover:not(:disabled) { background: #15803d; }
+.btnConfirmSuccess:disabled { opacity: 0.6; cursor: not-allowed; }

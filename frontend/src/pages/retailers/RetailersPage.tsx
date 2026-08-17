@@ -18,6 +18,40 @@ const EMPTY: RetailerRequest = {
   gstNumber: '', panNumber: '', joiningDate: '',
 }
 
+// Send null for empty optional fields so backend pattern validators don't fire on ''
+function sanitize(f: RetailerRequest): RetailerRequest {
+  const opt = (v?: string) => (v?.trim() ? v.trim() : undefined)
+  return {
+    retailerCode: f.retailerCode?.trim() || undefined,
+    retailerName: f.retailerName.trim(),
+    mobile: f.mobile.trim(),
+    alternateMobile: opt(f.alternateMobile),
+    email: opt(f.email),
+    address: opt(f.address),
+    city: opt(f.city),
+    state: opt(f.state),
+    pinCode: opt(f.pinCode),
+    gstNumber: opt(f.gstNumber),
+    panNumber: opt(f.panNumber),
+    joiningDate: opt(f.joiningDate),
+  }
+}
+
+// Extract readable message from backend error response
+function extractError(err: unknown): string {
+  const data = (err as { response?: { data?: { message?: string; fieldErrors?: { field: string; message: string }[] } } })?.response?.data
+  if (!data) return 'Failed to save. Please try again.'
+  if (data.fieldErrors?.length) {
+    return data.fieldErrors.map(fe => {
+      const label = fe.field
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, s => s.toUpperCase())
+      return `${label}: ${fe.message}`
+    }).join('\n')
+  }
+  return data.message ?? 'Failed to save. Please try again.'
+}
+
 export default function RetailersPage() {
   const gridRef = useRef<AgGridReact<Retailer>>(null)
   const [rowData, setRowData] = useState<Retailer[]>([])
@@ -26,12 +60,16 @@ export default function RetailersPage() {
   const [uploading, setUploading] = useState(false)
   const [showFormat, setShowFormat] = useState(false)
 
-  // Modal state
+  // Add / Edit modal
   const [modal, setModal] = useState<'add' | 'edit' | null>(null)
   const [editing, setEditing] = useState<Retailer | null>(null)
   const [form, setForm] = useState<RetailerRequest>(EMPTY)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+
+  // Confirm dialog for activate / deactivate
+  const [confirm, setConfirm] = useState<{ retailer: Retailer; action: 'activate' | 'deactivate' } | null>(null)
+  const [confirming, setConfirming] = useState(false)
 
   const fetchData = (q: string) =>
     getRetailers({ page: 0, size: 500, ...(q && { query: q }) })
@@ -67,27 +105,29 @@ export default function RetailersPage() {
     e.preventDefault()
     setSaving(true); setFormError('')
     try {
-      if (modal === 'add') {
-        await createRetailer(form)
-      } else if (editing) {
-        await updateRetailer(editing.id, form)
-      }
+      const payload = sanitize(form)
+      if (modal === 'add') await createRetailer(payload)
+      else if (editing) await updateRetailer(editing.id, payload)
       closeModal()
       fetchData(search)
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      setFormError(msg ?? 'Failed to save. Check your inputs.')
+    } catch (err) {
+      setFormError(extractError(err))
     } finally {
       setSaving(false)
     }
   }
 
-  const handleToggleStatus = async (r: Retailer) => {
+  const handleConfirmToggle = async () => {
+    if (!confirm) return
+    setConfirming(true)
     try {
-      if (r.status === 'ACTIVE') await deactivateRetailer(r.id)
-      else await activateRetailer(r.id)
+      if (confirm.action === 'deactivate') await deactivateRetailer(confirm.retailer.id)
+      else await activateRetailer(confirm.retailer.id)
       fetchData(search)
-    } catch { /* ignore */ }
+    } catch { /* ignore */ } finally {
+      setConfirming(false)
+      setConfirm(null)
+    }
   }
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,13 +164,16 @@ export default function RetailersPage() {
       ),
     },
     {
-      headerName: 'Actions', width: 160, sortable: false, filter: false,
+      headerName: 'Actions', width: 170, sortable: false, filter: false,
       cellRenderer: (p: ICellRendererParams<Retailer>) => p.data ? (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', height: '100%' }}>
           <button className={styles.btnEdit} onClick={() => openEdit(p.data!)}>Edit</button>
           <button
             className={p.data.status === 'ACTIVE' ? styles.btnDeactivate : styles.btnActivate}
-            onClick={() => handleToggleStatus(p.data!)}
+            onClick={() => setConfirm({
+              retailer: p.data!,
+              action: p.data!.status === 'ACTIVE' ? 'deactivate' : 'activate',
+            })}
           >
             {p.data.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
           </button>
@@ -237,43 +280,47 @@ export default function RetailersPage() {
                   <input value={form.mobile} onChange={set('mobile')} required placeholder="10 digits" maxLength={10} />
                 </label>
                 <label>
-                  <span>Alternate Mobile</span>
+                  <span>Alternate Mobile <em>(optional)</em></span>
                   <input value={form.alternateMobile ?? ''} onChange={set('alternateMobile')} placeholder="10 digits" maxLength={10} />
                 </label>
                 <label>
-                  <span>Email</span>
-                  <input type="email" value={form.email ?? ''} onChange={set('email')} />
+                  <span>Email <em>(optional)</em></span>
+                  <input value={form.email ?? ''} onChange={set('email')} placeholder="example@email.com" />
                 </label>
                 <label>
-                  <span>City</span>
+                  <span>City <em>(optional)</em></span>
                   <input value={form.city ?? ''} onChange={set('city')} />
                 </label>
                 <label>
-                  <span>State</span>
+                  <span>State <em>(optional)</em></span>
                   <input value={form.state ?? ''} onChange={set('state')} />
                 </label>
                 <label>
-                  <span>PIN Code</span>
+                  <span>PIN Code <em>(optional)</em></span>
                   <input value={form.pinCode ?? ''} onChange={set('pinCode')} placeholder="6 digits" maxLength={6} />
                 </label>
                 <label className={styles.fieldFull}>
-                  <span>Address</span>
+                  <span>Address <em>(optional)</em></span>
                   <input value={form.address ?? ''} onChange={set('address')} />
                 </label>
                 <label>
-                  <span>GST Number</span>
+                  <span>GST Number <em>(optional)</em></span>
                   <input value={form.gstNumber ?? ''} onChange={set('gstNumber')} placeholder="15-char GST" maxLength={15} />
                 </label>
                 <label>
-                  <span>PAN Number</span>
+                  <span>PAN Number <em>(optional)</em></span>
                   <input value={form.panNumber ?? ''} onChange={set('panNumber')} placeholder="10-char PAN" maxLength={10} />
                 </label>
                 <label>
-                  <span>Joining Date</span>
+                  <span>Joining Date <em>(optional)</em></span>
                   <input type="date" value={form.joiningDate ?? ''} onChange={set('joiningDate')} />
                 </label>
               </div>
-              {formError && <p className={styles.error}>{formError}</p>}
+              {formError && (
+                <div className={styles.errorBox}>
+                  {formError.split('\n').map((line, i) => <p key={i}>{line}</p>)}
+                </div>
+              )}
               <div className={styles.modalActions}>
                 <button type="button" onClick={closeModal}>Cancel</button>
                 <button type="submit" disabled={saving}>
@@ -281,6 +328,36 @@ export default function RetailersPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm activate / deactivate */}
+      {confirm && (
+        <div className={styles.overlay} onClick={() => setConfirm(null)}>
+          <div className={styles.confirmModal} onClick={e => e.stopPropagation()}>
+            <div className={confirm.action === 'deactivate' ? styles.confirmIconDanger : styles.confirmIconSuccess}>
+              {confirm.action === 'deactivate' ? '⚠️' : '✅'}
+            </div>
+            <h3>{confirm.action === 'deactivate' ? 'Deactivate Retailer?' : 'Activate Retailer?'}</h3>
+            <p>
+              {confirm.action === 'deactivate'
+                ? <>Are you sure you want to deactivate <strong>{confirm.retailer.retailerName}</strong> ({confirm.retailer.retailerCode})? They will no longer be accessible for new transactions.</>
+                : <>Are you sure you want to activate <strong>{confirm.retailer.retailerName}</strong> ({confirm.retailer.retailerCode})?</>
+              }
+            </p>
+            <div className={styles.confirmActions}>
+              <button className={styles.btnCancel} onClick={() => setConfirm(null)} disabled={confirming}>
+                Cancel
+              </button>
+              <button
+                className={confirm.action === 'deactivate' ? styles.btnConfirmDanger : styles.btnConfirmSuccess}
+                onClick={handleConfirmToggle}
+                disabled={confirming}
+              >
+                {confirming ? 'Please wait…' : confirm.action === 'deactivate' ? 'Yes, Deactivate' : 'Yes, Activate'}
+              </button>
+            </div>
           </div>
         </div>
       )}
