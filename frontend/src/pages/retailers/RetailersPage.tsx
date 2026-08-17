@@ -149,36 +149,50 @@ export default function RetailersPage() {
     setForm(f => ({ ...f, [k]: e.target.value }))
 
   const downloadTemplate = () => {
-    const headers = [
-      'retailer_code', 'retailer_name', 'mobile', 'alternate_mobile',
-      'email', 'address', 'city', 'state', 'pin_code', 'gst_number',
-      'pan_number', 'joining_date',
-    ]
-    const sample = [
-      'RET001', 'Sharma Electronics', '9876543210', '9876543211',
-      'sharma@email.com', '123 Main St', 'Mumbai', 'Maharashtra',
-      '400001', '27AAPFU0939F1ZV', 'AAPFU0939F', '2024-01-15',
-    ]
-    const notes = [
-      '* Required', '* Required', '* Required (10 digits)', 'Optional (10 digits)',
-      'Optional', 'Optional', 'Optional', 'Optional',
-      'Optional (6 digits)', 'Optional (15-char GST)', 'Optional (10-char PAN)', 'Optional (YYYY-MM-DD)',
+    const columns = [
+      { key: 'retailer_code',    label: 'Retailer Code',    required: true  },
+      { key: 'retailer_name',    label: 'Retailer Name',    required: true  },
+      { key: 'mobile',           label: 'Mobile',           required: true  },
+      { key: 'alternate_mobile', label: 'Alternate Mobile', required: false },
+      { key: 'email',            label: 'Email',            required: false },
+      { key: 'address',          label: 'Address',          required: false },
+      { key: 'city',             label: 'City',             required: false },
+      { key: 'state',            label: 'State',            required: false },
+      { key: 'pin_code',         label: 'Pin Code',         required: false },
+      { key: 'gst_number',       label: 'GST Number',       required: false },
+      { key: 'pan_number',       label: 'PAN Number',       required: false },
+      { key: 'joining_date',     label: 'Joining Date',     required: false },
     ]
 
-    const ws = XLSX.utils.aoa_to_sheet([headers, sample, notes])
+    const mandatory = columns.filter(c => c.required).map(c => c.label).join(', ')
+    const infoRow   = [`Mandatory Columns: ${mandatory}`, ...Array(columns.length - 1).fill('')]
+    const headerRow = columns.map(c => c.required ? `${c.label} *` : c.label)
+    const hintRow   = [
+      'Unique code (letters, digits, - _)',
+      'Full name of the retailer',
+      '10-digit mobile number',
+      '10-digit number (optional)',
+      'Valid email address (optional)',
+      'Full address (optional)',
+      'City name (optional)',
+      'State name (optional)',
+      '6-digit PIN code (optional)',
+      '15-character GST number (optional)',
+      '10-character PAN number (optional)',
+      'Date in YYYY-MM-DD format (optional)',
+    ]
+
+    const ws = XLSX.utils.aoa_to_sheet([infoRow, headerRow, hintRow])
+
+    // Merge info row across all columns
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: columns.length - 1 } }]
 
     // Column widths
-    ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 4, 18) }))
-
-    // Style header row bold (SheetJS CE supports basic cell props)
-    headers.forEach((_, i) => {
-      const cell = XLSX.utils.encode_cell({ r: 0, c: i })
-      if (ws[cell]) ws[cell].s = { font: { bold: true }, fill: { fgColor: { rgb: '1E56A0' } } }
-    })
+    ws['!cols'] = columns.map(c => ({ wch: Math.max(c.label.length + 6, 22) }))
 
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Retailers')
-    XLSX.writeFile(wb, 'retailer_upload_template.xlsx')
+    XLSX.writeFile(wb, 'Retailer_Upload_Template.xlsx')
   }
 
   const COLS: ColDef<Retailer>[] = [
