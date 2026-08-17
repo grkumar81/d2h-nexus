@@ -30,14 +30,18 @@ export interface Retailer {
   createdAt: string
 }
 export interface RetailerRequest {
-  retailerCode: string
+  retailerCode?: string
   retailerName: string
-  mobile?: string
+  mobile: string
+  alternateMobile?: string
   email?: string
   address?: string
   city?: string
   state?: string
   pinCode?: string
+  gstNumber?: string
+  panNumber?: string
+  joiningDate?: string
 }
 
 // ── Asset ─────────────────────────────────────────────────────────────────────
