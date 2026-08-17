@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import type { ColDef, ICellRendererParams } from 'ag-grid-community'
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
-import * as XLSX from 'xlsx'
+import * as XLSX from 'xlsx-js-style'
 import {
   getRetailers, createRetailer, updateRetailer,
   activateRetailer, deactivateRetailer, uploadRetailers,
@@ -150,45 +150,43 @@ export default function RetailersPage() {
 
   const downloadTemplate = () => {
     const columns = [
-      { key: 'retailer_code',    label: 'Retailer Code',    required: true  },
-      { key: 'retailer_name',    label: 'Retailer Name',    required: true  },
-      { key: 'mobile',           label: 'Mobile',           required: true  },
-      { key: 'alternate_mobile', label: 'Alternate Mobile', required: false },
-      { key: 'email',            label: 'Email',            required: false },
-      { key: 'address',          label: 'Address',          required: false },
-      { key: 'city',             label: 'City',             required: false },
-      { key: 'state',            label: 'State',            required: false },
-      { key: 'pin_code',         label: 'Pin Code',         required: false },
-      { key: 'gst_number',       label: 'GST Number',       required: false },
-      { key: 'pan_number',       label: 'PAN Number',       required: false },
-      { key: 'joining_date',     label: 'Joining Date',     required: false },
+      { label: 'Retailer Code',    hint: 'Unique code — letters, digits, hyphens and underscores only',  required: true  },
+      { label: 'Retailer Name',    hint: 'Full name of the retailer',                                     required: true  },
+      { label: 'Mobile',           hint: '10-digit mobile number',                                        required: true  },
+      { label: 'Alternate Mobile', hint: '10-digit alternate mobile number',                              required: false },
+      { label: 'Email',            hint: 'Valid email address (e.g. name@domain.com)',                    required: false },
+      { label: 'Address',          hint: 'Full street address',                                           required: false },
+      { label: 'City',             hint: 'City name',                                                     required: false },
+      { label: 'State',            hint: 'State name',                                                    required: false },
+      { label: 'Pin Code',         hint: '6-digit PIN code',                                              required: false },
+      { label: 'GST Number',       hint: '15-character GST number (e.g. 27AAPFU0939F1ZV)',               required: false },
+      { label: 'PAN Number',       hint: '10-character PAN number (e.g. AAPFU0939F)',                    required: false },
+      { label: 'Joining Date',     hint: 'Date in YYYY-MM-DD format (e.g. 2024-01-15)',                  required: false },
     ]
 
-    const mandatory = columns.filter(c => c.required).map(c => c.label).join(', ')
-    const infoRow   = [`Mandatory Columns: ${mandatory}`, ...Array(columns.length - 1).fill('')]
-    const headerRow = columns.map(c => c.required ? `${c.label} *` : c.label)
-    const hintRow   = [
-      'Unique code (letters, digits, - _)',
-      'Full name of the retailer',
-      '10-digit mobile number',
-      '10-digit number (optional)',
-      'Valid email address (optional)',
-      'Full address (optional)',
-      'City name (optional)',
-      'State name (optional)',
-      '6-digit PIN code (optional)',
-      '15-character GST number (optional)',
-      '10-character PAN number (optional)',
-      'Date in YYYY-MM-DD format (optional)',
-    ]
+    // Row 1: format hints (light grey italic)
+    const hintRow = columns.map(c => ({ v: c.hint, t: 's', s: {
+      font: { italic: true, color: { rgb: '6B7280' }, sz: 9 },
+      fill: { patternType: 'solid', fgColor: { rgb: 'F3F4F6' } },
+      alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+    }}))
 
-    const ws = XLSX.utils.aoa_to_sheet([infoRow, headerRow, hintRow])
+    // Row 2: column headers — mandatory red, optional blue
+    const headerRow = columns.map(c => ({ v: c.label, t: 's', s: {
+      font: { bold: true, sz: 11, color: { rgb: c.required ? 'CC0000' : '1E56A0' } },
+      fill: { patternType: 'solid', fgColor: { rgb: c.required ? 'FFE4E4' : 'EFF6FF' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: {
+        top:    { style: 'thin',   color: { rgb: c.required ? 'CC0000' : '2E6FD4' } },
+        bottom: { style: 'medium', color: { rgb: c.required ? 'CC0000' : '2E6FD4' } },
+        left:   { style: 'thin',   color: { rgb: 'D1D5DB' } },
+        right:  { style: 'thin',   color: { rgb: 'D1D5DB' } },
+      },
+    }}))
 
-    // Merge info row across all columns
-    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: columns.length - 1 } }]
-
-    // Column widths
-    ws['!cols'] = columns.map(c => ({ wch: Math.max(c.label.length + 6, 22) }))
+    const ws = XLSX.utils.aoa_to_sheet([hintRow, headerRow])
+    ws['!cols']  = columns.map(() => ({ wch: 32 }))
+    ws['!rows']  = [{ hpt: 36 }, { hpt: 20 }]
 
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Retailers')
